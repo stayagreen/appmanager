@@ -169,6 +169,7 @@ public partial class MainViewModel : ObservableObject
 
         try
         {
+            entry.LogOutput = "";
             _process.Start(entry);
             entry.Status = "Running";
             _db.UpdateStatus(entry.Id, "Running");
@@ -275,6 +276,13 @@ public partial class MainViewModel : ObservableObject
     private void Refresh()
     {
         RefreshAllStatus();
+    }
+
+    [RelayCommand]
+    private void SavePorts(ProgramEntry? entry)
+    {
+        if (entry == null) return;
+        _db.Update(entry);
     }
 
     partial void OnSelectedProgramChanged(ProgramEntry? value)

@@ -1,52 +1,80 @@
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 using AppManager.Models;
 
 namespace AppManager.Services;
 
 public class ProcessService
 {
+    private readonly Dictionary<int, Process> _runningProcesses = new();
+
     public bool IsProgramRunning(ProgramEntry entry)
     {
-        var processes = Process.GetProcesses();
-        try
+        if (_runningProcesses.TryGetValue(entry.Id, out var proc))
         {
-            return processes.Any(p =>
-            {
-                try { return p.MainWindowTitle.Contains(entry.WindowTitle) && !p.HasExited; }
-                catch { return false; }
-            });
+            try { return !proc.HasExited; }
+            catch { return false; }
         }
-        finally
-        {
-            foreach (var p in processes) p.Dispose();
-        }
+        return false;
     }
 
     public void Start(ProgramEntry entry)
     {
         if (!File.Exists(entry.StartBat))
-        {
             throw new FileNotFoundException($"Start bat not found: {entry.StartBat}");
-        }
 
-        var startInfo = new ProcessStartInfo
+        var psi = new ProcessStartInfo
         {
             FileName = "cmd.exe",
-            Arguments = $"/c start \"{entry.WindowTitle}\" /min cmd /c \"{entry.StartBat}\"",
+            Arguments = $"/c \"{entry.StartBat}\"",
             WorkingDirectory = Path.GetDirectoryName(entry.StartBat) ?? entry.Directory,
             CreateNoWindow = true,
-            UseShellExecute = false
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
         };
 
-        using var proc = Process.Start(startInfo);
+        var proc = new Process { StartInfo = psi, EnableRaisingEvents = true };
+
+        var sb = new StringBuilder();
+        proc.OutputDataReceived += (s, e) =>
+        {
+            if (e.Data != null)
+            {
+                sb.AppendLine(e.Data);
+                entry.LogOutput = sb.ToString();
+            }
+        };
+        proc.ErrorDataReceived += (s, e) =>
+        {
+            if (e.Data != null)
+            {
+                sb.AppendLine(e.Data);
+                entry.LogOutput = sb.ToString();
+            }
+        };
+
+        proc.Exited += (s, e) =>
+        {
+            _runningProcesses.Remove(entry.Id);
+            proc.Dispose();
+        };
+
+        proc.Start();
+        proc.BeginOutputReadLine();
+        proc.BeginErrorReadLine();
+
+        _runningProcesses[entry.Id] = proc;
     }
 
     public void Stop(ProgramEntry entry)
     {
         if (!string.IsNullOrWhiteSpace(entry.StopBat) && File.Exists(entry.StopBat))
         {
-            var startInfo = new ProcessStartInfo
+            var psi = new ProcessStartInfo
             {
                 FileName = "cmd.exe",
                 Arguments = $"/c \"{entry.StopBat}\"",
@@ -54,11 +82,11 @@ public class ProcessService
                 CreateNoWindow = true,
                 UseShellExecute = false
             };
-            using var proc = Process.Start(startInfo);
+            using var proc = Process.Start(psi);
             proc?.WaitForExit(10000);
         }
 
-        KillByWindowTitle(entry.WindowTitle);
+        KillProcessTree(entry);
     }
 
     public void Restart(ProgramEntry entry)
@@ -81,28 +109,21 @@ public class ProcessService
         entry.Status = IsProgramRunning(entry) ? "Running" : "Stopped";
     }
 
-    public void KillByWindowTitle(string windowTitle)
+    private void KillProcessTree(ProgramEntry entry)
     {
-        var processes = Process.GetProcesses();
-        try
+        if (_runningProcesses.TryGetValue(entry.Id, out var proc))
         {
-            var targets = processes
-                .Where(p =>
-                {
-                    try { return p.MainWindowTitle.Contains(windowTitle) && !p.HasExited; }
-                    catch { return false; }
-                })
-                .ToList();
-
-            foreach (var p in targets)
+            try
             {
-                try { p.Kill(); p.WaitForExit(5000); }
-                catch { }
+                if (!proc.HasExited)
+                {
+                    proc.Kill(entireProcessTree: true);
+                    proc.WaitForExit(5000);
+                }
             }
-        }
-        finally
-        {
-            foreach (var p in processes) p.Dispose();
+            catch { }
+            try { proc.Dispose(); } catch { }
+            _runningProcesses.Remove(entry.Id);
         }
     }
 }

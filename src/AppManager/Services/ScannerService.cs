@@ -128,7 +128,7 @@ public class ScannerService
                         case "BROWSER_PORT": entry.WebPort ??= val; break;
                         case "API_PORT": entry.ApiPort ??= val; break;
                         case "WS_PORT": entry.WsPort ??= val; break;
-                        case "VITE_PORT": entry.ApiPort ??= val; break;
+                        case "VITE_PORT": entry.WebPort ??= val; break;
                         case "HMR_PORT": entry.WsPort ??= val; break;
                     }
                 }
@@ -157,7 +157,7 @@ public class ScannerService
                         case "BROWSER_PORT": entry.WebPort ??= val; break;
                         case "API_PORT": entry.ApiPort ??= val; break;
                         case "WS_PORT": entry.WsPort ??= val; break;
-                        case "VITE_PORT": entry.ApiPort ??= val; break;
+                        case "VITE_PORT": entry.WebPort ??= val; break;
                         case "HMR_PORT": entry.WsPort ??= val; break;
                     }
                 }
@@ -176,7 +176,7 @@ public class ScannerService
             {
                 var content = File.ReadAllText(vcPath);
                 var portMatch = Regex.Match(content, @"port\s*:\s*(\d+)");
-                if (portMatch.Success) entry.ApiPort ??= int.Parse(portMatch.Groups[1].Value);
+                if (portMatch.Success) entry.WebPort ??= int.Parse(portMatch.Groups[1].Value);
 
                 var hmrMatch = Regex.Match(content, @"(?:hmr|port).*?(\d{4,5})");
                 // More specific: find hmr port

@@ -93,9 +93,6 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
@@ -135,15 +132,26 @@
 
                         <TextBlock Grid.Row="1" Text="Web 端口:" FontWeight="SemiBold" Foreground="#555"
                                    Margin="0,6,16,6"/>
-                        <TextBlock Grid.Row="1" Grid.Column="1"
-                                   Text="{Binding SelectedProgram.WebPort}"
-                                   FontSize="16" FontWeight="Bold" Foreground="#333"/>
+                        <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,6,0,0">
+                            <TextBox Text="{Binding SelectedProgram.WebPort, UpdateSourceTrigger=LostFocus}"
+                                     Width="60" Height="24" FontSize="15" FontWeight="Bold" Foreground="#333"
+                                     VerticalContentAlignment="Center"/>
+                        </StackPanel>
 
                         <TextBlock Grid.Row="2" Text="WS 端口:" FontWeight="SemiBold" Foreground="#555"
                                    Margin="0,6,16,6"/>
-                        <TextBlock Grid.Row="2" Grid.Column="1"
-                                   Text="{Binding SelectedProgram.WsPort}"
-                                   FontSize="16" FontWeight="Bold" Foreground="#333"/>
+                        <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,6,0,0">
+                            <TextBox Text="{Binding SelectedProgram.WsPort, UpdateSourceTrigger=LostFocus}"
+                                     Width="60" Height="24" FontSize="15" FontWeight="Bold" Foreground="#333"
+                                     VerticalContentAlignment="Center"/>
+                            <Button Content="保存端口" FontSize="11"
+                                    Height="24" MinWidth="60"
+                                    Margin="10,0,0,0"
+                                    Background="#0078D4" Foreground="White"
+                                    BorderThickness="0" Cursor="Hand"
+                                    Command="{Binding SavePortsCommand}"
+                                    CommandParameter="{Binding SelectedProgram}"/>
+                        </StackPanel>
 
                         <TextBlock Grid.Row="3" Text="登录地址:" FontWeight="SemiBold" Foreground="#555"
                                    Margin="0,6,16,0"/>
@@ -196,8 +204,32 @@
                     </TextBlock>
                 </StackPanel>
 
+                <!-- Output log -->
+                <Border Grid.Row="6" Margin="16,8,0,8">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="运行日志" FontSize="12" FontWeight="Bold" Foreground="#999"
+                                   Margin="0,0,0,4"/>
+                        <TextBox Grid.Row="1"
+                                 Text="{Binding SelectedProgram.LogOutput}"
+                                 IsReadOnly="True"
+                                 Background="#1E1E1E"
+                                 Foreground="#D4D4D4"
+                                 FontFamily="Consolas"
+                                 FontSize="12"
+                                 VerticalScrollBarVisibility="Auto"
+                                 HorizontalScrollBarVisibility="Auto"
+                                 TextWrapping="NoWrap"
+                                 AcceptsReturn="True"
+                                 BorderThickness="0"/>
+                    </Grid>
+                </Border>
+
                 <!-- Action buttons -->
-                <StackPanel Grid.Row="10" Orientation="Horizontal" Margin="0,12,0,0">
+                <StackPanel Grid.Row="7" Orientation="Horizontal" Margin="0,12,0,0">
                     <Button Content="启动" Style="{StaticResource ActionButton}"
                             Background="#228B22"
                             Command="{Binding StartProgramCommand}"
