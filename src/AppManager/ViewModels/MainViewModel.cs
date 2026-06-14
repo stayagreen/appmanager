@@ -249,7 +249,7 @@ public partial class MainViewModel : ObservableObject
             var results = _scanner.ScanDirectory(dialog.SelectedPath);
             if (results.Count == 0)
             {
-                System.Windows.MessageBox.Show("未发现任何 app.json 文件。", "扫描结果", MessageBoxButton.OK, MessageBoxImage.Information);
+                System.Windows.MessageBox.Show("未发现任何项目（未找到 start.bat 或 app.json）。", "扫描结果", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -265,7 +265,7 @@ public partial class MainViewModel : ObservableObject
                 imported++;
             }
 
-            System.Windows.MessageBox.Show($"从 {results.Count} 个 app.json 中导入了 {imported} 个新程序。\n" +
+            System.Windows.MessageBox.Show($"从 {results.Count} 个项目中导入了 {imported} 个新程序。\n" +
                 $"跳过 {results.Count - imported} 个已存在的程序。", "扫描完成",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }

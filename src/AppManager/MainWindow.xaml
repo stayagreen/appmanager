@@ -32,17 +32,18 @@
             <Grid Margin="10">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,6">
                     <Button Content="+ 添加" Style="{StaticResource ActionButton}"
                             Command="{Binding AddProgramCommand}"/>
                     <Button Content="扫描" Style="{StaticResource ActionButton}"
                             Background="#5C2D91"
                             Command="{Binding ScanDirectoryCommand}"/>
                 </StackPanel>
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,32,0,10">
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,6">
                     <Button Content="刷新" Style="{StaticResource ActionButton}"
                             Background="#666"
                             Command="{Binding RefreshCommand}"/>
@@ -51,7 +52,7 @@
                             Command="{Binding StartAllCommand}"/>
                 </StackPanel>
 
-                <ListBox Grid.Row="1"
+                <ListBox Grid.Row="2"
                          ItemsSource="{Binding Programs}"
                          SelectedItem="{Binding SelectedProgram}"
                          Background="Transparent"
