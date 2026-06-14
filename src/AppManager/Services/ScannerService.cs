@@ -165,7 +165,20 @@ public class ScannerService
             catch { }
         }
 
-        // Try to detect port from vite.config.ts / vite.config.js
+        // Scan source files for port definitions (server.ts, server.js, etc.)
+        var sourceFiles = Directory.GetFiles(dir, "*.ts", SearchOption.TopDirectoryOnly)
+            .Concat(Directory.GetFiles(dir, "*.js", SearchOption.TopDirectoryOnly));
+        foreach (var sf in sourceFiles)
+        {
+            try
+            {
+                var content = File.ReadAllText(sf);
+                ScanSourceForPorts(content, entry);
+            }
+            catch { }
+        }
+
+        // Try vite configs
         var viteConfigs = new[] { "vite.config.ts", "vite.config.js" };
         foreach (var vc in viteConfigs)
         {
@@ -178,9 +191,7 @@ public class ScannerService
                 var portMatch = Regex.Match(content, @"port\s*:\s*(\d+)");
                 if (portMatch.Success) entry.WebPort ??= int.Parse(portMatch.Groups[1].Value);
 
-                var hmrMatch = Regex.Match(content, @"(?:hmr|port).*?(\d{4,5})");
-                // More specific: find hmr port
-                var hmrPortMatch = Regex.Match(content, @"hmr\s*:\s*\{[^}]*port\s*:\s*(\d+)", RegexOptions.Singleline);
+                var hmrPortMatch = Regex.Match(content, @"hmr\s*:.*?port\s*:\s*(\d+)", RegexOptions.Singleline);
                 if (hmrPortMatch.Success) entry.WsPort ??= int.Parse(hmrPortMatch.Groups[1].Value);
             }
             catch { }
@@ -193,6 +204,32 @@ public class ScannerService
             entry.LoginUrl = $"http://localhost:{entry.ApiPort.Value}";
 
         return entry;
+    }
+
+    private static void ScanSourceForPorts(string content, ProgramEntry entry)
+    {
+        // Pattern: const port = env.PORT || 6000
+        var apiMatch = Regex.Match(content, @"(?:const|let|var)\s+port\s*[=:]\s*(?:[^,]+\|\|\s*)?(\d{4,5})", RegexOptions.IgnoreCase);
+        if (apiMatch.Success && !entry.ApiPort.HasValue)
+            entry.ApiPort = int.Parse(apiMatch.Groups[1].Value);
+
+        // Pattern: const browserPort = env.BROWSER_PORT || 6001
+        var webMatch = Regex.Match(content, @"(?:const|let|var)\s+browserPort\s*[=:]\s*(?:[^,]+\|\|\s*)?(\d{4,5})", RegexOptions.IgnoreCase);
+        if (webMatch.Success && !entry.WebPort.HasValue)
+            entry.WebPort = int.Parse(webMatch.Groups[1].Value);
+
+        // Pattern: PORT = 6000 (not prefixed by const/let/var, like in .env parsing)
+        var portAssign = Regex.Match(content, @"PORT\s*[=:]\s*(\d{4,5})");
+        if (portAssign.Success && !entry.ApiPort.HasValue)
+            entry.ApiPort = int.Parse(portAssign.Groups[1].Value);
+
+        var browserAssign = Regex.Match(content, @"BROWSER_PORT\s*[=:]\s*(\d{4,5})");
+        if (browserAssign.Success && !entry.WebPort.HasValue)
+            entry.WebPort = int.Parse(browserAssign.Groups[1].Value);
+
+        var wsAssign = Regex.Match(content, @"WS_PORT\s*[=:]\s*(\d{4,5})");
+        if (wsAssign.Success && !entry.WsPort.HasValue)
+            entry.WsPort = int.Parse(wsAssign.Groups[1].Value);
     }
 
     private static string? GetStringProp(JsonElement root, string name) =>
