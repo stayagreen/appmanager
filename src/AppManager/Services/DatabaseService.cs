@@ -7,6 +7,7 @@ namespace AppManager.Services;
 public class DatabaseService : IDisposable
 {
     private readonly SqliteConnection _connection;
+    private readonly object _lock = new();
 
     public DatabaseService()
     {
@@ -48,109 +49,129 @@ public class DatabaseService : IDisposable
     public List<ProgramEntry> GetAll()
     {
         var entries = new List<ProgramEntry>();
-        using var cmd = _connection.CreateCommand();
-        cmd.CommandText = "SELECT * FROM Programs ORDER BY SortOrder, Id";
-
-        using var reader = cmd.ExecuteReader();
-        while (reader.Read())
+        lock (_lock)
         {
-            entries.Add(MapEntry(reader));
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = "SELECT * FROM Programs ORDER BY SortOrder, Id";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                entries.Add(MapEntry(reader));
+            }
         }
         return entries;
     }
 
     public ProgramEntry? GetById(int id)
     {
-        using var cmd = _connection.CreateCommand();
-        cmd.CommandText = "SELECT * FROM Programs WHERE Id = @Id";
-        cmd.Parameters.AddWithValue("@Id", id);
-
-        using var reader = cmd.ExecuteReader();
-        if (reader.Read())
+        lock (_lock)
         {
-            return MapEntry(reader);
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = "SELECT * FROM Programs WHERE Id = @Id";
+            cmd.Parameters.AddWithValue("@Id", id);
+            using var reader = cmd.ExecuteReader();
+            if (reader.Read())
+                return MapEntry(reader);
         }
         return null;
     }
 
     public void Insert(ProgramEntry entry)
     {
-        using var cmd = _connection.CreateCommand();
-        cmd.CommandText = """
-            INSERT INTO Programs (Name, StartBat, StopBat, RestartBat, ApiPort, WebPort, WsPort,
-                LoginUrl, Directory, Status, SortOrder, CreatedAt, UpdatedAt)
-            VALUES (@Name, @StartBat, @StopBat, @RestartBat, @ApiPort, @WebPort, @WsPort,
-                @LoginUrl, @Directory, @Status, @SortOrder, @CreatedAt, @UpdatedAt);
-            SELECT last_insert_rowid();
-            """;
-        AddParams(cmd, entry);
-        entry.Id = Convert.ToInt32((long)cmd.ExecuteScalar()!);
+        lock (_lock)
+        {
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = """
+                INSERT INTO Programs (Name, StartBat, StopBat, RestartBat, ApiPort, WebPort, WsPort,
+                    LoginUrl, Directory, Status, SortOrder, CreatedAt, UpdatedAt)
+                VALUES (@Name, @StartBat, @StopBat, @RestartBat, @ApiPort, @WebPort, @WsPort,
+                    @LoginUrl, @Directory, @Status, @SortOrder, @CreatedAt, @UpdatedAt);
+                SELECT last_insert_rowid();
+                """;
+            AddParams(cmd, entry);
+            entry.Id = Convert.ToInt32((long)cmd.ExecuteScalar()!);
+        }
     }
 
     public void Update(ProgramEntry entry)
     {
-        entry.UpdatedAt = DateTime.UtcNow.ToString("o");
-        using var cmd = _connection.CreateCommand();
-        cmd.CommandText = """
-            UPDATE Programs SET Name=@Name, StartBat=@StartBat, StopBat=@StopBat,
-                RestartBat=@RestartBat, ApiPort=@ApiPort, WebPort=@WebPort,
-                WsPort=@WsPort, LoginUrl=@LoginUrl, Directory=@Directory,
-                Status=@Status, SortOrder=@SortOrder, UpdatedAt=@UpdatedAt
-            WHERE Id = @Id
-            """;
-        AddParams(cmd, entry);
-        cmd.Parameters.AddWithValue("@Id", entry.Id);
-        cmd.ExecuteNonQuery();
+        lock (_lock)
+        {
+            entry.UpdatedAt = DateTime.UtcNow.ToString("o");
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = """
+                UPDATE Programs SET Name=@Name, StartBat=@StartBat, StopBat=@StopBat,
+                    RestartBat=@RestartBat, ApiPort=@ApiPort, WebPort=@WebPort,
+                    WsPort=@WsPort, LoginUrl=@LoginUrl, Directory=@Directory,
+                    Status=@Status, SortOrder=@SortOrder, UpdatedAt=@UpdatedAt
+                WHERE Id = @Id
+                """;
+            AddParams(cmd, entry);
+            cmd.Parameters.AddWithValue("@Id", entry.Id);
+            cmd.ExecuteNonQuery();
+        }
     }
 
     public void Delete(int id)
     {
-        using var cmd = _connection.CreateCommand();
-        cmd.CommandText = "DELETE FROM Programs WHERE Id = @Id";
-        cmd.Parameters.AddWithValue("@Id", id);
-        cmd.ExecuteNonQuery();
+        lock (_lock)
+        {
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = "DELETE FROM Programs WHERE Id = @Id";
+            cmd.Parameters.AddWithValue("@Id", id);
+            cmd.ExecuteNonQuery();
+        }
     }
 
     public void UpdateStatus(int id, string status)
     {
-        using var cmd = _connection.CreateCommand();
-        cmd.CommandText = "UPDATE Programs SET Status = @Status, UpdatedAt = @UpdatedAt WHERE Id = @Id";
-        cmd.Parameters.AddWithValue("@Status", status);
-        cmd.Parameters.AddWithValue("@UpdatedAt", DateTime.UtcNow.ToString("o"));
-        cmd.Parameters.AddWithValue("@Id", id);
-        cmd.ExecuteNonQuery();
+        lock (_lock)
+        {
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = "UPDATE Programs SET Status=@Status, UpdatedAt=@UpdatedAt WHERE Id=@Id";
+            cmd.Parameters.AddWithValue("@Status", status);
+            cmd.Parameters.AddWithValue("@UpdatedAt", DateTime.UtcNow.ToString("o"));
+            cmd.Parameters.AddWithValue("@Id", id);
+            cmd.ExecuteNonQuery();
+        }
     }
 
     public bool ExistsByName(string name, int? excludeId = null)
     {
-        using var cmd = _connection.CreateCommand();
-        if (excludeId.HasValue)
+        lock (_lock)
         {
-            cmd.CommandText = "SELECT COUNT(*) FROM Programs WHERE Name = @Name AND Id != @Id";
-            cmd.Parameters.AddWithValue("@Id", excludeId.Value);
+            using var cmd = _connection.CreateCommand();
+            if (excludeId.HasValue)
+            {
+                cmd.CommandText = "SELECT COUNT(*) FROM Programs WHERE Name=@Name AND Id!=@Id";
+                cmd.Parameters.AddWithValue("@Id", excludeId.Value);
+            }
+            else
+            {
+                cmd.CommandText = "SELECT COUNT(*) FROM Programs WHERE Name=@Name";
+            }
+            cmd.Parameters.AddWithValue("@Name", name);
+            return (long)cmd.ExecuteScalar()! > 0;
         }
-        else
-        {
-            cmd.CommandText = "SELECT COUNT(*) FROM Programs WHERE Name = @Name";
-        }
-        cmd.Parameters.AddWithValue("@Name", name);
-        return (long)cmd.ExecuteScalar()! > 0;
     }
 
     public bool ExistsByDirectory(string directory, int? excludeId = null)
     {
-        using var cmd = _connection.CreateCommand();
-        if (excludeId.HasValue)
+        lock (_lock)
         {
-            cmd.CommandText = "SELECT COUNT(*) FROM Programs WHERE Directory = @Dir AND Id != @Id";
-            cmd.Parameters.AddWithValue("@Id", excludeId.Value);
+            using var cmd = _connection.CreateCommand();
+            if (excludeId.HasValue)
+            {
+                cmd.CommandText = "SELECT COUNT(*) FROM Programs WHERE Directory=@Dir AND Id!=@Id";
+                cmd.Parameters.AddWithValue("@Id", excludeId.Value);
+            }
+            else
+            {
+                cmd.CommandText = "SELECT COUNT(*) FROM Programs WHERE Directory=@Dir";
+            }
+            cmd.Parameters.AddWithValue("@Dir", directory);
+            return (long)cmd.ExecuteScalar()! > 0;
         }
-        else
-        {
-            cmd.CommandText = "SELECT COUNT(*) FROM Programs WHERE Directory = @Dir";
-        }
-        cmd.Parameters.AddWithValue("@Dir", directory);
-        return (long)cmd.ExecuteScalar()! > 0;
     }
 
     private static ProgramEntry MapEntry(SqliteDataReader reader)
@@ -193,7 +214,7 @@ public class DatabaseService : IDisposable
 
     public void Dispose()
     {
-        _connection?.Close();
-        _connection?.Dispose();
+        _connection.Close();
+        _connection.Dispose();
     }
 }
