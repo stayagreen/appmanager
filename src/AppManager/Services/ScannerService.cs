@@ -188,8 +188,19 @@ public class ScannerService
             try
             {
                 var content = File.ReadAllText(vcPath);
-                var portMatch = Regex.Match(content, @"port\s*:\s*(\d+)");
-                if (portMatch.Success) entry.WebPort ??= int.Parse(portMatch.Groups[1].Value);
+
+                // Find port that is NOT inside an hmr block
+                var portMatches = Regex.Matches(content, @"port\s*:\s*(\d+)");
+                foreach (Match m in portMatches.Cast<Match>())
+                {
+                    var before = content.Substring(0, m.Index);
+                    var lastHmr = before.LastIndexOf("hmr", StringComparison.Ordinal);
+                    var lastServer = before.LastIndexOf("server", StringComparison.Ordinal);
+                    if (lastHmr > lastServer) continue;
+
+                    entry.WebPort ??= int.Parse(m.Groups[1].Value);
+                    break;
+                }
 
                 var hmrPortMatch = Regex.Match(content, @"hmr\s*:.*?port\s*:\s*(\d+)", RegexOptions.Singleline);
                 if (hmrPortMatch.Success) entry.WsPort ??= int.Parse(hmrPortMatch.Groups[1].Value);
@@ -208,28 +219,19 @@ public class ScannerService
 
     private static void ScanSourceForPorts(string content, ProgramEntry entry)
     {
-        // Pattern: const port = env.PORT || 6000
-        var apiMatch = Regex.Match(content, @"(?:const|let|var)\s+port\s*[=:]\s*(?:[^,]+\|\|\s*)?(\d{4,5})", RegexOptions.IgnoreCase);
-        if (apiMatch.Success && !entry.ApiPort.HasValue)
-            entry.ApiPort = int.Parse(apiMatch.Groups[1].Value);
+        // Pattern: const PORT = Number(process.env.PORT) || 6000
+        var portValue = Regex.Match(content, @"PORT\s*[=:]\s*(?:Number\([^)]+\)\s*\|\|\s*)?(\d{4,5})", RegexOptions.IgnoreCase);
+        if (portValue.Success && !entry.ApiPort.HasValue)
+            entry.ApiPort = int.Parse(portValue.Groups[1].Value);
 
-        // Pattern: const browserPort = env.BROWSER_PORT || 6001
-        var webMatch = Regex.Match(content, @"(?:const|let|var)\s+browserPort\s*[=:]\s*(?:[^,]+\|\|\s*)?(\d{4,5})", RegexOptions.IgnoreCase);
-        if (webMatch.Success && !entry.WebPort.HasValue)
-            entry.WebPort = int.Parse(webMatch.Groups[1].Value);
+        // Pattern: const BROWSER_PORT = Number(process.env.BROWSER_PORT) || 6001
+        var browserValue = Regex.Match(content, @"BROWSER_PORT\s*[=:]\s*(?:Number\([^)]+\)\s*\|\|\s*)?(\d{4,5})", RegexOptions.IgnoreCase);
+        if (browserValue.Success && !entry.WebPort.HasValue)
+            entry.WebPort = int.Parse(browserValue.Groups[1].Value);
 
-        // Pattern: PORT = 6000 (not prefixed by const/let/var, like in .env parsing)
-        var portAssign = Regex.Match(content, @"PORT\s*[=:]\s*(\d{4,5})");
-        if (portAssign.Success && !entry.ApiPort.HasValue)
-            entry.ApiPort = int.Parse(portAssign.Groups[1].Value);
-
-        var browserAssign = Regex.Match(content, @"BROWSER_PORT\s*[=:]\s*(\d{4,5})");
-        if (browserAssign.Success && !entry.WebPort.HasValue)
-            entry.WebPort = int.Parse(browserAssign.Groups[1].Value);
-
-        var wsAssign = Regex.Match(content, @"WS_PORT\s*[=:]\s*(\d{4,5})");
-        if (wsAssign.Success && !entry.WsPort.HasValue)
-            entry.WsPort = int.Parse(wsAssign.Groups[1].Value);
+        var wsValue = Regex.Match(content, @"WS_PORT\s*[=:]\s*(?:Number\([^)]+\)\s*\|\|\s*)?(\d{4,5})", RegexOptions.IgnoreCase);
+        if (wsValue.Success && !entry.WsPort.HasValue)
+            entry.WsPort = int.Parse(wsValue.Groups[1].Value);
     }
 
     private static string? GetStringProp(JsonElement root, string name) =>
