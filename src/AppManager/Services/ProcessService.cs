@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Text;
+using System.Text.RegularExpressions;
 using AppManager.Models;
 
 namespace AppManager.Services;
@@ -24,11 +25,18 @@ public class ProcessService
         if (!File.Exists(entry.StartBat))
             throw new FileNotFoundException($"Start bat not found: {entry.StartBat}");
 
+        var (command, workDir) = ParseBatFile(entry.StartBat);
+        if (string.IsNullOrWhiteSpace(command))
+            throw new InvalidOperationException("无法从 bat 文件中提取启动命令");
+
+        if (string.IsNullOrWhiteSpace(workDir))
+            workDir = entry.Directory;
+
         var psi = new ProcessStartInfo
         {
             FileName = "cmd.exe",
-            Arguments = $"/c \"{entry.StartBat}\"",
-            WorkingDirectory = Path.GetDirectoryName(entry.StartBat) ?? entry.Directory,
+            Arguments = $"/c {command}",
+            WorkingDirectory = workDir,
             CreateNoWindow = true,
             UseShellExecute = false,
             RedirectStandardOutput = true,
@@ -60,7 +68,7 @@ public class ProcessService
         proc.Exited += (s, e) =>
         {
             _runningProcesses.Remove(entry.Id);
-            proc.Dispose();
+            try { proc.Dispose(); } catch { }
         };
 
         proc.Start();
@@ -107,6 +115,61 @@ public class ProcessService
     public void RefreshStatus(ProgramEntry entry)
     {
         entry.Status = IsProgramRunning(entry) ? "Running" : "Stopped";
+    }
+
+    private static (string? command, string? workDir) ParseBatFile(string batPath)
+    {
+        try
+        {
+            var lines = File.ReadAllLines(batPath);
+            string? workDir = null;
+
+            foreach (var line in lines)
+            {
+                var trimmed = line.Trim();
+
+                // Extract cd /d {path}
+                var cdMatch = Regex.Match(trimmed, @"^cd\s+/d\s+(.+)$", RegexOptions.IgnoreCase);
+                if (cdMatch.Success)
+                {
+                    workDir = cdMatch.Groups[1].Value.Trim();
+                    continue;
+                }
+
+                // Extract start "{title}" /min cmd /c "{command}"
+                var startMatch = Regex.Match(trimmed, @"^start\s+""[^""]*""\s+(?:/min\s+)?cmd\s+/c\s+""(.+)""$", RegexOptions.IgnoreCase);
+                if (startMatch.Success)
+                {
+                    var cmd = startMatch.Groups[1].Value;
+                    return (cmd, workDir);
+                }
+
+                // Also match: start "title" ... cmd /c command (without quotes)
+                var startMatch2 = Regex.Match(trimmed, @"^start\s+""[^""]*""\s+(?:/[a-z]+\s+)*cmd\s+/c\s+(.+)$", RegexOptions.IgnoreCase);
+                if (startMatch2.Success)
+                {
+                    var cmd = startMatch2.Groups[1].Value.Trim('"');
+                    return (cmd, workDir);
+                }
+            }
+
+            // Fallback: look for last non-@echo, non-cd, non-pause, non-timeout line
+            for (int i = lines.Length - 1; i >= 0; i--)
+            {
+                var line = lines[i].Trim();
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                if (line.StartsWith("@")) continue;
+                if (line.StartsWith("echo", StringComparison.OrdinalIgnoreCase)) continue;
+                if (line.StartsWith("cd", StringComparison.OrdinalIgnoreCase)) continue;
+                if (line.StartsWith("pause", StringComparison.OrdinalIgnoreCase)) continue;
+                if (line.StartsWith("timeout", StringComparison.OrdinalIgnoreCase)) continue;
+                if (line.StartsWith("start", StringComparison.OrdinalIgnoreCase)) continue;
+                return (line, workDir);
+            }
+        }
+        catch { }
+
+        return (null, null);
     }
 
     private void KillProcessTree(ProgramEntry entry)
