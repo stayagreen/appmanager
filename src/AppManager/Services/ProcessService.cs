@@ -123,33 +123,42 @@ public class ProcessService
         {
             var lines = File.ReadAllLines(batPath);
             string? workDir = null;
+            var batDir = Path.GetDirectoryName(batPath) ?? "";
 
             foreach (var line in lines)
             {
                 var trimmed = line.Trim();
 
-                // Extract cd /d {path}
-                var cdMatch = Regex.Match(trimmed, @"^cd\s+/d\s+(.+)$", RegexOptions.IgnoreCase);
+                // Extract cd /d path
+                var cdMatch = Regex.Match(trimmed, @"^cd\s+/d\s+""?(.+?)""?\s*$", RegexOptions.IgnoreCase);
                 if (cdMatch.Success)
                 {
-                    workDir = cdMatch.Groups[1].Value.Trim();
+                    var cdPath = cdMatch.Groups[1].Value.Trim();
+                    // Handle batch variables like %~dp0, %CD%
+                    if (cdPath.Contains("%"))
+                    {
+                        workDir = batDir;
+                    }
+                    else
+                    {
+                        workDir = cdPath;
+                    }
                     continue;
                 }
 
-                // Extract start "{title}" /min cmd /c "{command}"
-                var startMatch = Regex.Match(trimmed, @"^start\s+""[^""]*""\s+(?:/min\s+)?cmd\s+/c\s+""(.+)""$", RegexOptions.IgnoreCase);
+                // Extract start "{title}" ... cmd /c "{command}"
+                var startMatch = Regex.Match(trimmed, @"^start\s+""[^""]*""\s+(?:/[a-z]+\s+)*cmd\s+/c\s+""(.+)""\s*$", RegexOptions.IgnoreCase);
                 if (startMatch.Success)
                 {
-                    var cmd = startMatch.Groups[1].Value;
-                    return (cmd, workDir);
+                    return (startMatch.Groups[1].Value, workDir ?? batDir);
                 }
 
-                // Also match: start "title" ... cmd /c command (without quotes)
+                // start "title" ... cmd /c command (no quotes around command)
                 var startMatch2 = Regex.Match(trimmed, @"^start\s+""[^""]*""\s+(?:/[a-z]+\s+)*cmd\s+/c\s+(.+)$", RegexOptions.IgnoreCase);
                 if (startMatch2.Success)
                 {
                     var cmd = startMatch2.Groups[1].Value.Trim('"');
-                    return (cmd, workDir);
+                    return (cmd, workDir ?? batDir);
                 }
             }
 
@@ -164,7 +173,7 @@ public class ProcessService
                 if (line.StartsWith("pause", StringComparison.OrdinalIgnoreCase)) continue;
                 if (line.StartsWith("timeout", StringComparison.OrdinalIgnoreCase)) continue;
                 if (line.StartsWith("start", StringComparison.OrdinalIgnoreCase)) continue;
-                return (line, workDir);
+                return (line, workDir ?? batDir);
             }
         }
         catch { }
