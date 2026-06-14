@@ -1,0 +1,107 @@
+<Window x:Class="AppManager.Views.ProgramDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="程序信息" Height="520" Width="520"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        WindowStyle="ToolWindow">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="程序名称" FontWeight="Bold" Margin="0,0,0,4"/>
+        <TextBox Grid.Row="1" x:Name="TxtName" Height="28" Margin="0,0,0,10"/>
+
+        <TextBlock Grid.Row="2" Text="项目目录" FontWeight="Bold" Margin="0,0,0,4"/>
+        <Grid Grid.Row="3" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="TxtDirectory" Height="28"/>
+            <Button Grid.Column="1" Content="..." Width="32" Height="28" Margin="6,0,0,0"
+                    Click="BrowseDirectory_Click"/>
+        </Grid>
+
+        <TextBlock Grid.Row="4" Text="启动脚本 (start.bat)" FontWeight="Bold" Margin="0,0,0,4"/>
+        <Grid Grid.Row="5" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="TxtStartBat" Height="28"/>
+            <Button Grid.Column="1" Content="..." Width="32" Height="28" Margin="6,0,0,0"
+                    Click="BrowseStart_Click"/>
+        </Grid>
+
+        <TextBlock Grid.Row="6" Text="停止脚本 (stop.bat)" FontWeight="Bold" Margin="0,0,0,4"/>
+        <Grid Grid.Row="7" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="TxtStopBat" Height="28"/>
+            <Button Grid.Column="1" Content="..." Width="32" Height="28" Margin="6,0,0,0"
+                    Click="BrowseStop_Click"/>
+        </Grid>
+
+        <TextBlock Grid.Row="8" Text="重启脚本 (restart.bat)" FontWeight="Bold" Margin="0,0,0,4"/>
+        <Grid Grid.Row="9" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="TxtRestartBat" Height="28"/>
+            <Button Grid.Column="1" Content="..." Width="32" Height="28" Margin="6,0,0,0"
+                    Click="BrowseRestart_Click"/>
+        </Grid>
+
+        <Grid Grid.Row="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Text="API 端口" FontWeight="Bold" Margin="0,0,0,4"/>
+            <TextBox Grid.Row="1" x:Name="TxtApiPort" Height="28" Margin="0,0,10,10"/>
+
+            <TextBlock Grid.Column="1" Text="Web 端口" FontWeight="Bold" Margin="10,0,0,4"/>
+            <TextBox Grid.Row="1" Grid.Column="1" x:Name="TxtWebPort" Height="28" Margin="10,0,0,10"/>
+
+            <TextBlock Grid.Row="2" Text="WebSocket 端口" FontWeight="Bold" Margin="0,0,0,4"/>
+            <TextBox Grid.Row="3" x:Name="TxtWsPort" Height="28" Margin="0,0,10,10"/>
+
+            <TextBlock Grid.Row="2" Grid.Column="1" Text="登录地址" FontWeight="Bold" Margin="10,0,0,4"/>
+            <TextBox Grid.Row="3" Grid.Column="1" x:Name="TxtLoginUrl" Height="28" Margin="10,0,0,10"/>
+        </Grid>
+
+        <Grid Grid.Row="11" HorizontalAlignment="Right" Margin="0,15,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Button Content="确定" Width="80" Height="30" Click="Ok_Click"
+                    Background="#0078D4" Foreground="White" BorderThickness="0"/>
+            <Button Grid.Column="1" Content="取消" Width="80" Height="30" Margin="10,0,0,0"
+                    Click="Cancel_Click"/>
+        </Grid>
+    </Grid>
+</Window>
