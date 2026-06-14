@@ -8,12 +8,19 @@ public class ProcessService
 {
     public bool IsProgramRunning(ProgramEntry entry)
     {
-        return Process.GetProcesses()
-            .Any(p =>
+        var processes = Process.GetProcesses();
+        try
+        {
+            return processes.Any(p =>
             {
                 try { return p.MainWindowTitle.Contains(entry.WindowTitle) && !p.HasExited; }
                 catch { return false; }
             });
+        }
+        finally
+        {
+            foreach (var p in processes) p.Dispose();
+        }
     }
 
     public void Start(ProgramEntry entry)
@@ -32,7 +39,7 @@ public class ProcessService
             UseShellExecute = false
         };
 
-        Process.Start(startInfo);
+        using var proc = Process.Start(startInfo);
     }
 
     public void Stop(ProgramEntry entry)
@@ -74,20 +81,28 @@ public class ProcessService
         entry.Status = IsProgramRunning(entry) ? "Running" : "Stopped";
     }
 
-    private static void KillByWindowTitle(string windowTitle)
+    public void KillByWindowTitle(string windowTitle)
     {
-        var processes = Process.GetProcesses()
-            .Where(p =>
-            {
-                try { return p.MainWindowTitle.Contains(windowTitle) && !p.HasExited; }
-                catch { return false; }
-            })
-            .ToList();
-
-        foreach (var p in processes)
+        var processes = Process.GetProcesses();
+        try
         {
-            try { p.Kill(); p.WaitForExit(5000); }
-            catch { }
+            var targets = processes
+                .Where(p =>
+                {
+                    try { return p.MainWindowTitle.Contains(windowTitle) && !p.HasExited; }
+                    catch { return false; }
+                })
+                .ToList();
+
+            foreach (var p in targets)
+            {
+                try { p.Kill(); p.WaitForExit(5000); }
+                catch { }
+            }
+        }
+        finally
+        {
+            foreach (var p in processes) p.Dispose();
         }
     }
 }
