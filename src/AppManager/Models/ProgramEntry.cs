@@ -7,6 +7,7 @@ public partial class ProgramEntry : ObservableObject
     public int Id { get; set; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(WindowTitle))]
     private string _name = string.Empty;
 
     [ObservableProperty]
@@ -34,6 +35,9 @@ public partial class ProgramEntry : ObservableObject
     private string _directory = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusIcon))]
+    [NotifyPropertyChangedFor(nameof(IsRunning))]
+    [NotifyPropertyChangedFor(nameof(IsStopped))]
     private string _status = "Stopped";
 
     [ObservableProperty]
