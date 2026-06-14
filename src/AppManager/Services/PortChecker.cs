@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using System.Net.NetworkInformation;
 
 namespace AppManager.Services;
@@ -17,7 +18,7 @@ public class PortChecker
     {
         var listeners = IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpListeners();
         var listener = listeners.FirstOrDefault(l => l.Port == port);
-        if (listener == default)
+        if (listener == null)
         {
             return new PortInfo(port, false, "", 0);
         }
@@ -82,10 +83,10 @@ public class PortChecker
                     {
                         try
                         {
-                            var p = Process.GetProcessById(pid);
+                            using var p = Process.GetProcessById(pid);
                             return (p.ProcessName, pid);
                         }
-                        catch
+                        catch (ArgumentException)
                         {
                             return ("unknown", pid);
                         }
@@ -93,7 +94,9 @@ public class PortChecker
                 }
             }
         }
-        catch { }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)
+        {
+        }
         return ("unknown", 0);
     }
 }
