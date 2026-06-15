@@ -289,14 +289,15 @@
             </Grid>
         </Border>
 
-        <!-- Scan progress bar -->
-        <Border Grid.Column="2" VerticalAlignment="Bottom" Margin="24,0,24,8"
-                Visibility="{Binding IsScanning, Converter={StaticResource BoolToVisible}}"
-                Background="White">
-            <StackPanel Margin="0,4">
-                <TextBlock Text="{Binding ScanProgressText}" FontSize="12" Foreground="#666" Margin="0,0,0,4"/>
-                <ProgressBar Height="6" Value="{Binding ScanProgressValue}" Minimum="0" Maximum="100"
-                             Foreground="#0078D4" Background="#E0E0E0" BorderThickness="0"/>
+        <!-- Full-screen loading overlay -->
+        <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="3" Grid.RowSpan="1"
+                Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisible}}"
+                Background="#AA000000" Panel.ZIndex="1000">
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                <TextBlock Text="{Binding BusyText}" FontSize="18" Foreground="White"
+                           HorizontalAlignment="Center" Margin="0,0,0,16"/>
+                <ProgressBar Width="400" Height="8" IsIndeterminate="True"
+                             Foreground="#0078D4" Background="#33FFFFFF" BorderThickness="0"/>
             </StackPanel>
         </Border>
     </Grid>

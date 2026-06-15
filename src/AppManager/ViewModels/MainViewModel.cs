@@ -37,6 +37,12 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private double _scanProgressValue;
 
+    [ObservableProperty]
+    private bool _isBusy;
+
+    [ObservableProperty]
+    private string _busyText = "";
+
     public MainViewModel()
     {
         _db = new DatabaseService();
@@ -179,9 +185,12 @@ public partial class MainViewModel : ObservableObject
         try
         {
             entry.LogOutput = "";
+            IsBusy = true;
+            BusyText = $"正在启动 {entry.Name}...";
             _process.Start(entry);
             entry.Status = "Running";
             _db.Update(entry);
+            IsBusy = false;
 
             // Detect ports after delays (ports may open gradually)
             var detectAt = new[] { 5, 10 };
@@ -213,9 +222,12 @@ public partial class MainViewModel : ObservableObject
         if (entry == null) return;
         try
         {
+            IsBusy = true;
+            BusyText = $"正在停止 {entry.Name}...";
             _process.Stop(entry);
             entry.Status = "Stopped";
             _db.UpdateStatus(entry.Id, "Stopped");
+            IsBusy = false;
         }
         catch (Exception ex)
         {
@@ -229,9 +241,12 @@ public partial class MainViewModel : ObservableObject
         if (entry == null) return;
         try
         {
+            IsBusy = true;
+            BusyText = $"正在重启 {entry.Name}...";
             _process.Restart(entry);
             entry.Status = "Running";
             _db.UpdateStatus(entry.Id, "Running");
+            IsBusy = false;
         }
         catch (Exception ex)
         {
@@ -274,18 +289,16 @@ public partial class MainViewModel : ObservableObject
 
         if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
         {
-            IsScanning = true;
-            ScanProgressValue = 0;
+            IsBusy = true;
+            BusyText = "正在扫描项目...";
 
             var results = await _scanner.ScanDirectoryAsync(dialog.SelectedPath, (current, total, name) =>
             {
-                ScanProgressText = $"正在扫描: {name} ({current}/{total})";
-                ScanProgressValue = (double)current / total * 100;
+                BusyText = $"正在扫描 ({current}/{total}): {name}";
             });
             if (results.Count == 0)
             {
-                IsScanning = false;
-                ScanProgressText = "";
+                IsBusy = false;
                 System.Windows.MessageBox.Show("未发现任何项目（未找到 start.bat）。", "扫描结果", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
@@ -310,8 +323,7 @@ public partial class MainViewModel : ObservableObject
                 $"跳过 {results.Count - imported} 个已存在的程序。{aiMsg}", "扫描完成",
                 MessageBoxButton.OK, MessageBoxImage.Information);
 
-            IsScanning = false;
-            ScanProgressText = "";
+            IsBusy = false;
         }
     }
 
