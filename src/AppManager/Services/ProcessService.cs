@@ -219,7 +219,7 @@ public class ProcessService
         KillProcessTree(entry);
     }
 
-    private static void KillByPort(string port)
+    public static void KillByPort(string port)
     {
         try
         {

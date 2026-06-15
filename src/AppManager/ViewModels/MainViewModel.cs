@@ -405,9 +405,15 @@ public partial class MainViewModel : ObservableObject
 
     public int RunningCount => Programs.Count(p => p.IsRunning);
 
-    public void KillAllProcesses()
+    public void StopAllProcesses()
     {
         _process.KillAll();
+        // Also kill by port for externally started programs
+        foreach (var entry in Programs)
+        {
+            if (entry.ApiPort > 0) ProcessService.KillByPort(entry.ApiPort.Value.ToString());
+            if (entry.WebPort > 0) ProcessService.KillByPort(entry.WebPort.Value.ToString());
+        }
     }
 
     [RelayCommand]
