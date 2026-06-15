@@ -65,15 +65,30 @@ public class ProcessService
 
         _beforePorts = _portChecker.GetActivePorts();
 
+        // If parsed command looks like a short setup line, run the entire bat instead
+        string executableCmd;
+        if (command.Length < 15 ||
+            command.StartsWith("set ", StringComparison.OrdinalIgnoreCase) ||
+            command.StartsWith("if ", StringComparison.OrdinalIgnoreCase) ||
+            command.StartsWith("call ", StringComparison.OrdinalIgnoreCase))
+        {
+            executableCmd = $"\"{entry.StartBat}\"";
+        }
+        else
+        {
+            executableCmd = command;
+        }
+
         var psi = new ProcessStartInfo
         {
             FileName = "cmd.exe",
-            Arguments = $"/c {command}",
+            Arguments = $"/c {executableCmd}",
             WorkingDirectory = workDir,
             CreateNoWindow = true,
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+            RedirectStandardInput = true,
             StandardOutputEncoding = Encoding.UTF8,
             StandardErrorEncoding = Encoding.UTF8,
         };
@@ -82,7 +97,10 @@ public class ProcessService
 
         var sb = new StringBuilder();
         sb.AppendLine($"[工作目录] {workDir}");
-        sb.AppendLine($"[执行命令] {command}");
+        if (executableCmd == command)
+            sb.AppendLine($"[执行命令] {command}");
+        else
+            sb.AppendLine($"[执行] 直接运行 bat: {entry.StartBat}");
         sb.AppendLine("");
         entry.LogOutput = sb.ToString();
 
@@ -112,6 +130,7 @@ public class ProcessService
         };
 
         proc.Start();
+        proc.StandardInput.Close();
         proc.BeginOutputReadLine();
         proc.BeginErrorReadLine();
 
@@ -256,11 +275,19 @@ public class ProcessService
                 var line = lines[i].Trim();
                 if (string.IsNullOrWhiteSpace(line)) continue;
                 if (line.StartsWith("@")) continue;
+                if (line.StartsWith("::")) continue;
+                if (line.StartsWith("rem ", StringComparison.OrdinalIgnoreCase)) continue;
                 if (line.StartsWith("echo", StringComparison.OrdinalIgnoreCase)) continue;
                 if (line.StartsWith("cd", StringComparison.OrdinalIgnoreCase)) continue;
                 if (line.StartsWith("pause", StringComparison.OrdinalIgnoreCase)) continue;
                 if (line.StartsWith("timeout", StringComparison.OrdinalIgnoreCase)) continue;
                 if (line.StartsWith("start", StringComparison.OrdinalIgnoreCase)) continue;
+                if (line.StartsWith("set ", StringComparison.OrdinalIgnoreCase)) continue;
+                if (line.StartsWith("if ", StringComparison.OrdinalIgnoreCase)) continue;
+                if (line.StartsWith("goto ", StringComparison.OrdinalIgnoreCase)) continue;
+                if (line.StartsWith("call ", StringComparison.OrdinalIgnoreCase)) continue;
+                if (line.StartsWith("title ", StringComparison.OrdinalIgnoreCase)) continue;
+                if (line.StartsWith("exit", StringComparison.OrdinalIgnoreCase)) continue;
                 return (line, workDir ?? batDir);
             }
         }
