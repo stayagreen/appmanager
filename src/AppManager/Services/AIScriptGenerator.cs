@@ -13,7 +13,10 @@ public class AIScriptGenerator
 
     public AIScriptGenerator()
     {
-        _apiKey = AppConfig.Load().OpenCodeApiKey;
+        var configKey = AppConfig.Load().OpenCodeApiKey;
+        _apiKey = !string.IsNullOrWhiteSpace(configKey)
+            ? configKey
+            : "sk-inEoQQxSJfivJEftKNiIqaKK3By7uMHL9yF7qMkpSNve2mpOYgZpClnScS1XCT4b";
         _http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
         if (!string.IsNullOrWhiteSpace(_apiKey))
             _http.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
@@ -64,12 +67,12 @@ public class AIScriptGenerator
 
             var request = new
             {
-                model = "deepseek-v4-pro",
+                model = "mimo-v2.5",
                 messages = new[]
                 {
                     new {
                         role = "system",
-                        content = """你是一个项目分析专家。根据提供的项目文件，分析这个项目的启动方式。返回严格的 JSON 格式（不要markdown，不要解释）：{"command":"启动命令","stopMethod":"停止方法"}。command是完整的启动命令。stopMethod格式只能是以下之一：port-端口号（如port-7000）表示通过端口杀进程；taskkill-进程名（如taskkill-node.exe）表示通过进程名杀进程。只返回JSON。"""
+                        content = """你的任务是分析项目并输出JSON。启动命令必须是完整可执行的命令（如 npm run dev, python app.py, node server.js 等）。停止方法只能是: port-端口号（如port-7000）或 taskkill-进程名（如taskkill-node.exe）。输出严格JSON，不要markdown：{"command":"启动命令","stopMethod":"停止方法"}。"""
                     },
                     new { role = "user", content = sb.ToString() }
                 },
@@ -89,9 +92,6 @@ public class AIScriptGenerator
             var reply = "";
             if (msg.TryGetProperty("content", out var c) && c.ValueKind == JsonValueKind.String)
                 reply = c.GetString() ?? "";
-            if (string.IsNullOrWhiteSpace(reply) &&
-                msg.TryGetProperty("reasoning_content", out var rc) && rc.ValueKind == JsonValueKind.String)
-                reply = rc.GetString() ?? "";
 
             if (string.IsNullOrWhiteSpace(reply)) return null;
 
@@ -116,7 +116,7 @@ public class AIScriptGenerator
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"AI analysis failed: {ex.Message}");
-            return null;
+            return new AIScanResult("", "", null);
         }
     }
 }

@@ -48,18 +48,19 @@ public class ScannerService
             var (command, stopMethod) = ("", "");
 
             // AI analysis
-            onProgress?.Invoke(current, total, ai.HasApiKey
-                ? $"{Path.GetFileName(dir)} (AI分析中...)"
-                : $"{Path.GetFileName(dir)} (无AI Key)");
-            
             if (ai.HasApiKey)
             {
-                var aiResult = await ai.AnalyzeProject(dir, startBat);
-                if (aiResult.HasValue)
+                onProgress?.Invoke(current, total, $"{Path.GetFileName(dir)} (AI分析中...)");
+                try
                 {
-                    command = aiResult.Value.Command;
-                    stopMethod = aiResult.Value.StopMethod;
+                    var aiResult = await ai.AnalyzeProject(dir, startBat);
+                    if (aiResult.HasValue)
+                    {
+                        command = aiResult.Value.Command;
+                        stopMethod = aiResult.Value.StopMethod;
+                    }
                 }
+                catch { }
             }
 
             if (!string.IsNullOrWhiteSpace(command))

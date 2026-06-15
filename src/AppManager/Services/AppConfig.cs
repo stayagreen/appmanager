@@ -18,10 +18,17 @@ public class AppConfig
             if (File.Exists(ConfigPath))
             {
                 var json = File.ReadAllText(ConfigPath);
-                return JsonSerializer.Deserialize<AppConfig>(json) ?? new AppConfig();
+                var config = new AppConfig();
+                using var doc = JsonDocument.Parse(json);
+                if (doc.RootElement.TryGetProperty("OpenCodeApiKey", out var prop))
+                    config.OpenCodeApiKey = prop.GetString() ?? "";
+                return config;
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"AppConfig.Load failed: {ex.Message}");
+        }
         return new AppConfig();
     }
 
