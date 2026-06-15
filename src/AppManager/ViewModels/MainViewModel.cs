@@ -273,6 +273,7 @@ public partial class MainViewModel : ObservableObject
             }
 
             var imported = 0;
+            var aiCount = 0;
             foreach (var result in results)
             {
                 if (_db.ExistsByDirectory(result.Entry.Directory)) continue;
@@ -281,11 +282,14 @@ public partial class MainViewModel : ObservableObject
                 result.Entry.UpdatedAt = DateTime.UtcNow.ToString("o");
                 _db.Insert(result.Entry);
                 Programs.Add(result.Entry);
+                if (!string.IsNullOrWhiteSpace(result.Entry.StartCommand))
+                    aiCount++;
                 imported++;
             }
 
-            System.Windows.MessageBox.Show($"从 {results.Count} 个项目中导入了 {imported} 个新程序。\n" +
-                $"跳过 {results.Count - imported} 个已存在的程序。", "扫描完成",
+            var aiMsg = aiCount > 0 ? $"\n其中 {aiCount} 个项目已通过 AI 分析。" : "\nAI 未启用（请在设置中配置 API Key）。";
+            System.Windows.MessageBox.Show($"从 {results.Count} 个项目中导入了 {imported} 个新程序。" +
+                $"跳过 {results.Count - imported} 个已存在的程序。{aiMsg}", "扫描完成",
                 MessageBoxButton.OK, MessageBoxImage.Information);
 
             IsScanning = false;

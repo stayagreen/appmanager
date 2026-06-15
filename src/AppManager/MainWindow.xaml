@@ -231,6 +231,10 @@
                         <Run Text="Restart: "/>
                         <Run Text="{Binding SelectedProgram.RestartBat}"/>
                     </TextBlock>
+                    <TextBlock FontSize="12" Foreground="#0078D4">
+                        <Run Text="AI:    "/>
+                        <Run Text="{Binding SelectedProgram.StartCommand}"/>
+                    </TextBlock>
                 </StackPanel>
 
                 <!-- Output log -->

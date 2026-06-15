@@ -16,6 +16,8 @@ public class AIScriptGenerator
         _apiKey = AppConfig.Load().OpenCodeApiKey;
     }
 
+    public string ApiKey => _apiKey;
+
     public readonly record struct AIScanResult(
         string Command,
         string StopMethod,

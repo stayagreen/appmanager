@@ -59,17 +59,26 @@ public class ScannerService
                 if (string.IsNullOrWhiteSpace(entry.Name))
                     entry.Name = Path.GetFileName(dir);
 
-                // AI analysis
+            var (command, stopMethod) = ("", "");
+
+            // AI analysis
+            if (!string.IsNullOrWhiteSpace(new AIScriptGenerator().ApiKey))
+            {
+                onProgress?.Invoke(current, total, $"{Path.GetFileName(dir)} (AI分析中...)");
                 var aiResult = await ai.AnalyzeProject(dir, startBat);
                 if (aiResult.HasValue)
                 {
-                    if (!string.IsNullOrWhiteSpace(aiResult.Value.Command))
-                        entry.StartCommand = aiResult.Value.Command;
-                    if (!string.IsNullOrWhiteSpace(aiResult.Value.StopMethod))
-                        entry.StopMethod = aiResult.Value.StopMethod;
+                    command = aiResult.Value.Command;
+                    stopMethod = aiResult.Value.StopMethod;
                 }
+            }
 
-                results.Add(new ScanResult(dir, "", entry, false));
+            if (!string.IsNullOrWhiteSpace(command))
+                entry.StartCommand = command;
+            if (!string.IsNullOrWhiteSpace(stopMethod))
+                entry.StopMethod = stopMethod;
+
+            results.Add(new ScanResult(dir, "", entry, false));
             }
             catch { }
         }
