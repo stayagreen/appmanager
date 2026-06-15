@@ -20,9 +20,10 @@ public partial class App : System.Windows.Application
             ex.Handled = true;
         };
 
+        SeedConfig();
+
         var mainWindow = new MainWindow();
         mainWindow.Show();
-        SeedConfig();
         CreateTrayIcon();
     }
 

@@ -71,6 +71,11 @@ public class ProcessService
 
         var sb = new StringBuilder();
         sb.AppendLine($"[工作目录] {workDir}");
+        if (!string.IsNullOrWhiteSpace(entry.StartCommand))
+        {
+            sb.AppendLine($"[AI命令] {entry.StartCommand}");
+            sb.AppendLine($"[停止方式] {entry.StopMethod}");
+        }
         sb.AppendLine(string.IsNullOrWhiteSpace(entry.StartCommand)
             ? $"[执行] {entry.StartBat}"
             : $"[执行] {entry.StartCommand}");
