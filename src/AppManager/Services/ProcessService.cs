@@ -121,26 +121,13 @@ public class ProcessService
 
         var afterPorts = _portChecker.GetActivePorts();
         var newPorts = afterPorts.Except(_beforePorts).OrderBy(p => p).ToList();
-        _beforePorts = null;
 
-        var beforeSnapshot = _beforePorts;
-        entry.LogOutput += $"\r\n[端口检测] 启动前: {string.Join(",", beforeSnapshot)}\r\n";
-        entry.LogOutput += $"[端口检测] 启动后: {string.Join(",", afterPorts)}\r\n";
-        entry.LogOutput += $"[端口检测] 新增端口: {string.Join(",", newPorts)}\r\n";
+        entry.LogOutput += $"\r\n[端口检测] 新增端口: {string.Join(",", newPorts)}\r\n";
 
         if (newPorts.Count == 0) return;
 
-        if (newPorts.Count == 1)
-        {
-            entry.ApiPort = newPorts[0];
-            entry.WebPort = newPorts[0];
-        }
-        else if (newPorts.Count == 2)
-        {
-            entry.ApiPort = newPorts[0];
-            entry.WebPort = newPorts[1];
-        }
-        else
+        // Assign ports: lower = API, higher = Web, remote outlier = WS
+        if (newPorts.Count >= 3)
         {
             int? wsCandidate = null;
             for (int i = newPorts.Count - 1; i >= 0; i--)
@@ -152,23 +139,28 @@ public class ProcessService
                     break;
                 }
             }
-            if (wsCandidate.HasValue)
-                entry.WsPort = wsCandidate.Value;
+            if (wsCandidate.HasValue) entry.WsPort = wsCandidate.Value;
+        }
 
-            if (newPorts.Count >= 2)
-            {
-                entry.ApiPort = newPorts[0];
-                entry.WebPort = newPorts[1];
-            }
-            else if (newPorts.Count == 1)
-            {
-                entry.ApiPort = newPorts[0];
-                entry.WebPort = newPorts[0];
-            }
+        if (newPorts.Count >= 2)
+        {
+            entry.ApiPort = newPorts[0];
+            entry.WebPort = newPorts[^1];
+        }
+        else if (newPorts.Count == 1)
+        {
+            entry.ApiPort = newPorts[0];
+            entry.WebPort = newPorts[0];
         }
 
         if (entry.WebPort.HasValue)
             entry.LoginUrl = $"http://localhost:{entry.WebPort.Value}";
+
+        // Clear snapshot only when all ports are assigned
+        if (entry.ApiPort.HasValue && entry.WebPort.HasValue && entry.WsPort.HasValue)
+            _beforePorts = null;
+        else if (newPorts.Count == 1 && entry.ApiPort.HasValue && entry.WebPort.HasValue)
+            _beforePorts = null;
     }
 
     public void Stop(ProgramEntry entry)
@@ -276,48 +268,6 @@ public class ProcessService
         {
             if (string.IsNullOrWhiteSpace(entry.LogOutput))
                 entry.LogOutput = "[程序在外部启动，无法捕获日志]\r\n";
-        }
-
-        // Auto-detect ports if program is running via ports but ports aren't configured
-        if (running && !entry.ApiPort.HasValue && !entry.WebPort.HasValue)
-        {
-            var activePorts = _portChecker.GetActivePorts();
-            if (activePorts.Count > 0 && _beforePorts != null)
-            {
-                var newPorts = activePorts.Except(_beforePorts).OrderBy(p => p).ToList();
-                if (newPorts.Count > 0)
-                {
-                    if (newPorts.Count == 1)
-                    {
-                        entry.ApiPort = newPorts[0];
-                        entry.WebPort = newPorts[0];
-                    }
-                    else if (newPorts.Count == 2)
-                    {
-                        entry.ApiPort = newPorts[0];
-                        entry.WebPort = newPorts[1];
-                    }
-                    else
-                    {
-                        int? ws = null;
-                        for (int i = newPorts.Count - 1; i >= 0; i--)
-                        {
-                            if (i == 0 || newPorts[i] - newPorts[i - 1] > 1000)
-                            {
-                                ws = newPorts[i];
-                                newPorts.RemoveAt(i);
-                                break;
-                            }
-                        }
-                        if (ws.HasValue) entry.WsPort = ws.Value;
-                        if (newPorts.Count >= 2) { entry.ApiPort = newPorts[0]; entry.WebPort = newPorts[1]; }
-                        else if (newPorts.Count == 1) { entry.ApiPort = newPorts[0]; entry.WebPort = newPorts[0]; }
-                    }
-                    if (entry.WebPort.HasValue)
-                        entry.LoginUrl = $"http://localhost:{entry.WebPort.Value}";
-                    _beforePorts = null;
-                }
-            }
         }
     }
 

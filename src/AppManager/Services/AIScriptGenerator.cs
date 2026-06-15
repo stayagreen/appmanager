@@ -17,7 +17,7 @@ public class AIScriptGenerator
         _apiKey = !string.IsNullOrWhiteSpace(configKey)
             ? configKey
             : "sk-inEoQQxSJfivJEftKNiIqaKK3By7uMHL9yF7qMkpSNve2mpOYgZpClnScS1XCT4b";
-        _http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        _http = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
         if (!string.IsNullOrWhiteSpace(_apiKey))
             _http.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
     }

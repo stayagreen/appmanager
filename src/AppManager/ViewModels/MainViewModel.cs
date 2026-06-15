@@ -182,6 +182,24 @@ public partial class MainViewModel : ObservableObject
             _process.Start(entry);
             entry.Status = "Running";
             _db.Update(entry);
+
+            // Detect ports after delays (ports may open gradually)
+            var detectAt = new[] { 5, 10 };
+            foreach (var delay in detectAt)
+            {
+                var t = new DispatcherTimer { Interval = TimeSpan.FromSeconds(delay) };
+                t.Tick += (s, args) =>
+                {
+                    t.Stop();
+                    // Only detect if ports are not yet assigned
+                    if (!entry.ApiPort.HasValue || !entry.WebPort.HasValue || !entry.WsPort.HasValue)
+                    {
+                        _process.DetectPortsAfterStart(entry);
+                        _db.Update(entry);
+                    }
+                };
+                t.Start();
+            }
         }
         catch (Exception ex)
         {
