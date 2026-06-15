@@ -272,6 +272,48 @@ public class ProcessService
             if (string.IsNullOrWhiteSpace(entry.LogOutput))
                 entry.LogOutput = "[程序在外部启动，无法捕获日志]\r\n";
         }
+
+        // Auto-detect ports if program is running via ports but ports aren't configured
+        if (running && !entry.ApiPort.HasValue && !entry.WebPort.HasValue)
+        {
+            var activePorts = _portChecker.GetActivePorts();
+            if (activePorts.Count > 0 && _beforePorts != null)
+            {
+                var newPorts = activePorts.Except(_beforePorts).OrderBy(p => p).ToList();
+                if (newPorts.Count > 0)
+                {
+                    if (newPorts.Count == 1)
+                    {
+                        entry.ApiPort = newPorts[0];
+                        entry.WebPort = newPorts[0];
+                    }
+                    else if (newPorts.Count == 2)
+                    {
+                        entry.ApiPort = newPorts[0];
+                        entry.WebPort = newPorts[1];
+                    }
+                    else
+                    {
+                        int? ws = null;
+                        for (int i = newPorts.Count - 1; i >= 0; i--)
+                        {
+                            if (i == 0 || newPorts[i] - newPorts[i - 1] > 1000)
+                            {
+                                ws = newPorts[i];
+                                newPorts.RemoveAt(i);
+                                break;
+                            }
+                        }
+                        if (ws.HasValue) entry.WsPort = ws.Value;
+                        if (newPorts.Count >= 2) { entry.ApiPort = newPorts[0]; entry.WebPort = newPorts[1]; }
+                        else if (newPorts.Count == 1) { entry.ApiPort = newPorts[0]; entry.WebPort = newPorts[0]; }
+                    }
+                    if (entry.WebPort.HasValue)
+                        entry.LoginUrl = $"http://localhost:{entry.WebPort.Value}";
+                    _beforePorts = null;
+                }
+            }
+        }
     }
 
     private void KillProcessTree(ProgramEntry entry)

@@ -8,9 +8,32 @@ public partial class App : System.Windows.Application
 
     private void Application_Startup(object sender, StartupEventArgs e)
     {
+        AppDomain.CurrentDomain.UnhandledException += (s, ex) =>
+        {
+            var msg = ex.ExceptionObject is Exception e2 ? e2.Message : ex.ExceptionObject.ToString();
+            System.Windows.MessageBox.Show($"未处理异常:\n{msg}", "错误");
+        };
+
+        DispatcherUnhandledException += (s, ex) =>
+        {
+            System.Windows.MessageBox.Show($"UI异常:\n{ex.Exception.Message}", "错误");
+            ex.Handled = true;
+        };
+
         var mainWindow = new MainWindow();
         mainWindow.Show();
+        SeedConfig();
         CreateTrayIcon();
+    }
+
+    private static void SeedConfig()
+    {
+        var config = AppManager.Services.AppConfig.Load();
+        if (string.IsNullOrWhiteSpace(config.OpenCodeApiKey))
+        {
+            config.OpenCodeApiKey = "sk-inEoQQxSJfivJEftKNiIqaKK3By7uMHL9yF7qMkpSNve2mpOYgZpClnScS1XCT4b";
+            config.Save();
+        }
     }
 
     private void CreateTrayIcon()

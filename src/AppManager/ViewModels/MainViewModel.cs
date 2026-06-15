@@ -182,15 +182,6 @@ public partial class MainViewModel : ObservableObject
             _process.Start(entry);
             entry.Status = "Running";
             _db.Update(entry);
-
-            var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
-            timer.Tick += (s, args) =>
-            {
-                timer.Stop();
-                _process.DetectPortsAfterStart(entry);
-                _db.Update(entry);
-            };
-            timer.Start();
         }
         catch (Exception ex)
         {
