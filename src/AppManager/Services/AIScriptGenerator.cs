@@ -7,16 +7,19 @@ namespace AppManager.Services;
 
 public class AIScriptGenerator
 {
-    private readonly HttpClient _http = new();
+    private readonly HttpClient _http;
     private const string ApiUrl = "https://opencode.ai/zen/go/v1/chat/completions";
     private readonly string _apiKey;
 
     public AIScriptGenerator()
     {
         _apiKey = AppConfig.Load().OpenCodeApiKey;
+        _http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        if (!string.IsNullOrWhiteSpace(_apiKey))
+            _http.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
     }
 
-    public string ApiKey => _apiKey;
+    public bool HasApiKey => !string.IsNullOrWhiteSpace(_apiKey);
 
     public readonly record struct AIScanResult(
         string Command,
@@ -76,8 +79,6 @@ public class AIScriptGenerator
 
             var json = JsonSerializer.Serialize(request);
             var httpContent = new StringContent(json, Encoding.UTF8, "application/json");
-            _http.DefaultRequestHeaders.Clear();
-            _http.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
 
             var response = await _http.PostAsync(ApiUrl, httpContent);
             var responseBody = await response.Content.ReadAsStringAsync();

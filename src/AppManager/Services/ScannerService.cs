@@ -62,7 +62,7 @@ public class ScannerService
             var (command, stopMethod) = ("", "");
 
             // AI analysis
-            if (!string.IsNullOrWhiteSpace(new AIScriptGenerator().ApiKey))
+            if (ai.HasApiKey)
             {
                 onProgress?.Invoke(current, total, $"{Path.GetFileName(dir)} (AI分析中...)");
                 var aiResult = await ai.AnalyzeProject(dir, startBat);
