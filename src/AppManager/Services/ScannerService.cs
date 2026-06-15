@@ -13,11 +13,12 @@ public class ScannerService
         bool AlreadyExists
     );
 
-    public List<ScanResult> ScanDirectory(string rootPath)
+    public async Task<List<ScanResult>> ScanDirectoryAsync(string rootPath)
     {
         var results = new List<ScanResult>();
         if (!Directory.Exists(rootPath)) return results;
 
+        var ai = new AIScriptGenerator();
         var startBatFiles = Directory.GetFiles(rootPath, "start.bat", SearchOption.AllDirectories);
 
         foreach (var startBat in startBatFiles)
@@ -37,6 +38,7 @@ public class ScannerService
                 var restartBat = Path.Combine(dir, "restart.bat");
                 if (File.Exists(restartBat)) entry.RestartBat = restartBat;
 
+                // Read package.json for name
                 var packageJson = Path.Combine(dir, "package.json");
                 if (File.Exists(packageJson))
                 {
@@ -52,6 +54,16 @@ public class ScannerService
 
                 if (string.IsNullOrWhiteSpace(entry.Name))
                     entry.Name = Path.GetFileName(dir);
+
+                // AI analysis
+                var aiResult = await ai.AnalyzeProject(dir, startBat);
+                if (aiResult.HasValue)
+                {
+                    if (!string.IsNullOrWhiteSpace(aiResult.Value.Command))
+                        entry.StartCommand = aiResult.Value.Command;
+                    if (!string.IsNullOrWhiteSpace(aiResult.Value.StopMethod))
+                        entry.StopMethod = aiResult.Value.StopMethod;
+                }
 
                 results.Add(new ScanResult(dir, "", entry, false));
             }

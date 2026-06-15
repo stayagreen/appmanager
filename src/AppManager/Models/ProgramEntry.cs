@@ -46,6 +46,9 @@ public partial class ProgramEntry : ObservableObject
     [ObservableProperty]
     private string _logOutput = string.Empty;
 
+    public string StartCommand { get; set; } = string.Empty;
+    public string StopMethod { get; set; } = string.Empty;
+
     public string CreatedAt { get; set; } = DateTime.UtcNow.ToString("o");
     public string UpdatedAt { get; set; } = DateTime.UtcNow.ToString("o");
 

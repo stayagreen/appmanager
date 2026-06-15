@@ -247,7 +247,7 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void ScanDirectory()
+    private async Task ScanDirectory()
     {
         using var dialog = new System.Windows.Forms.FolderBrowserDialog
         {
@@ -256,7 +256,7 @@ public partial class MainViewModel : ObservableObject
 
         if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
         {
-            var results = _scanner.ScanDirectory(dialog.SelectedPath);
+            var results = await _scanner.ScanDirectoryAsync(dialog.SelectedPath);
             if (results.Count == 0)
             {
                 System.Windows.MessageBox.Show("未发现任何项目（未找到 start.bat 或 app.json）。", "扫描结果", MessageBoxButton.OK, MessageBoxImage.Information);

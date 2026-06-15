@@ -48,10 +48,15 @@ public class ProcessService
         var workDir = Path.GetDirectoryName(entry.StartBat) ?? entry.Directory;
         _beforePorts = _portChecker.GetActivePorts();
 
+        // Use AI-detected command if available, otherwise run the bat directly
+        var executable = string.IsNullOrWhiteSpace(entry.StartCommand)
+            ? $"\"{entry.StartBat}\""
+            : $"/c {entry.StartCommand}";
+
         var psi = new ProcessStartInfo
         {
             FileName = "cmd.exe",
-            Arguments = $"/c \"{entry.StartBat}\"",
+            Arguments = executable,
             WorkingDirectory = workDir,
             CreateNoWindow = true,
             UseShellExecute = false,
@@ -66,7 +71,9 @@ public class ProcessService
 
         var sb = new StringBuilder();
         sb.AppendLine($"[工作目录] {workDir}");
-        sb.AppendLine($"[执行] {entry.StartBat}");
+        sb.AppendLine(string.IsNullOrWhiteSpace(entry.StartCommand)
+            ? $"[执行] {entry.StartBat}"
+            : $"[执行] {entry.StartCommand}");
         sb.AppendLine("");
         entry.LogOutput = sb.ToString();
 
@@ -175,7 +182,69 @@ public class ProcessService
             proc?.WaitForExit(10000);
         }
 
+        // Handle AI-detected stop method
+        if (!string.IsNullOrWhiteSpace(entry.StopMethod))
+        {
+            if (entry.StopMethod.StartsWith("port-"))
+            {
+                var port = entry.StopMethod.Substring(5);
+                KillByPort(port);
+            }
+            else if (entry.StopMethod.StartsWith("taskkill-"))
+            {
+                var procName = entry.StopMethod.Substring(9);
+                KillByProcessName(procName);
+            }
+            else
+            {
+                // Use as direct kill command
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/c {entry.StopMethod}",
+                    CreateNoWindow = true,
+                    UseShellExecute = false
+                };
+                using var proc = Process.Start(psi);
+                proc?.WaitForExit(10000);
+            }
+        }
+
         KillProcessTree(entry);
+    }
+
+    private static void KillByPort(string port)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                Arguments = $"/c for /f \"tokens=5\" %a in ('netstat -ano ^| findstr :{port} ^| findstr LISTENING') do taskkill /f /pid %a",
+                CreateNoWindow = true,
+                UseShellExecute = false
+            };
+            using var proc = Process.Start(psi);
+            proc?.WaitForExit(5000);
+        }
+        catch { }
+    }
+
+    private static void KillByProcessName(string name)
+    {
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "taskkill",
+                Arguments = $"/f /im {name}",
+                CreateNoWindow = true,
+                UseShellExecute = false
+            };
+            using var proc = Process.Start(psi);
+            proc?.WaitForExit(5000);
+        }
+        catch { }
     }
 
     public void Restart(ProgramEntry entry)

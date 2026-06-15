@@ -39,11 +39,27 @@ public class DatabaseService : IDisposable
                 Directory TEXT,
                 Status TEXT DEFAULT 'Stopped',
                 SortOrder INTEGER DEFAULT 0,
+                StartCommand TEXT DEFAULT '',
+                StopMethod TEXT DEFAULT '',
                 CreatedAt TEXT,
                 UpdatedAt TEXT
             );
             """;
         cmd.ExecuteNonQuery();
+
+        MigrateColumn("StartCommand", "TEXT DEFAULT ''");
+        MigrateColumn("StopMethod", "TEXT DEFAULT ''");
+    }
+
+    private void MigrateColumn(string name, string type)
+    {
+        try
+        {
+            using var cmd = _connection.CreateCommand();
+            cmd.CommandText = $"ALTER TABLE Programs ADD COLUMN {name} {type}";
+            cmd.ExecuteNonQuery();
+        }
+        catch { }
     }
 
     public List<ProgramEntry> GetAll()
@@ -82,12 +98,12 @@ public class DatabaseService : IDisposable
         {
             using var cmd = _connection.CreateCommand();
             cmd.CommandText = """
-                INSERT INTO Programs (Name, StartBat, StopBat, RestartBat, ApiPort, WebPort, WsPort,
-                    LoginUrl, Directory, Status, SortOrder, CreatedAt, UpdatedAt)
-                VALUES (@Name, @StartBat, @StopBat, @RestartBat, @ApiPort, @WebPort, @WsPort,
-                    @LoginUrl, @Directory, @Status, @SortOrder, @CreatedAt, @UpdatedAt);
-                SELECT last_insert_rowid();
-                """;
+            INSERT INTO Programs (Name, StartBat, StopBat, RestartBat, ApiPort, WebPort, WsPort,
+                LoginUrl, Directory, Status, SortOrder, StartCommand, StopMethod, CreatedAt, UpdatedAt)
+            VALUES (@Name, @StartBat, @StopBat, @RestartBat, @ApiPort, @WebPort, @WsPort,
+                @LoginUrl, @Directory, @Status, @SortOrder, @StartCommand, @StopMethod, @CreatedAt, @UpdatedAt);
+            SELECT last_insert_rowid();
+            """;
             AddParams(cmd, entry);
             entry.Id = Convert.ToInt32((long)cmd.ExecuteScalar()!);
         }
@@ -99,13 +115,14 @@ public class DatabaseService : IDisposable
         {
             entry.UpdatedAt = DateTime.UtcNow.ToString("o");
             using var cmd = _connection.CreateCommand();
-            cmd.CommandText = """
-                UPDATE Programs SET Name=@Name, StartBat=@StartBat, StopBat=@StopBat,
-                    RestartBat=@RestartBat, ApiPort=@ApiPort, WebPort=@WebPort,
-                    WsPort=@WsPort, LoginUrl=@LoginUrl, Directory=@Directory,
-                    Status=@Status, SortOrder=@SortOrder, UpdatedAt=@UpdatedAt
-                WHERE Id = @Id
-                """;
+        cmd.CommandText = """
+            UPDATE Programs SET Name=@Name, StartBat=@StartBat, StopBat=@StopBat,
+                RestartBat=@RestartBat, ApiPort=@ApiPort, WebPort=@WebPort,
+                WsPort=@WsPort, LoginUrl=@LoginUrl, Directory=@Directory,
+                Status=@Status, SortOrder=@SortOrder, StartCommand=@StartCommand,
+                StopMethod=@StopMethod, UpdatedAt=@UpdatedAt
+            WHERE Id = @Id
+            """;
             AddParams(cmd, entry);
             cmd.Parameters.AddWithValue("@Id", entry.Id);
             cmd.ExecuteNonQuery();
@@ -190,8 +207,10 @@ public class DatabaseService : IDisposable
             Directory = reader.IsDBNull(9) ? "" : reader.GetString(9),
             Status = reader.IsDBNull(10) ? "Stopped" : reader.GetString(10),
             SortOrder = reader.IsDBNull(11) ? 0 : reader.GetInt32(11),
-            CreatedAt = reader.IsDBNull(12) ? "" : reader.GetString(12),
-            UpdatedAt = reader.IsDBNull(13) ? "" : reader.GetString(13),
+            StartCommand = reader.IsDBNull(12) ? "" : reader.GetString(12),
+            StopMethod = reader.IsDBNull(13) ? "" : reader.GetString(13),
+            CreatedAt = reader.IsDBNull(14) ? "" : reader.GetString(14),
+            UpdatedAt = reader.IsDBNull(15) ? "" : reader.GetString(15),
         };
     }
 
@@ -208,6 +227,8 @@ public class DatabaseService : IDisposable
         cmd.Parameters.AddWithValue("@Directory", (object?)entry.Directory ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@Status", entry.Status);
         cmd.Parameters.AddWithValue("@SortOrder", entry.SortOrder);
+        cmd.Parameters.AddWithValue("@StartCommand", (object?)entry.StartCommand ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@StopMethod", (object?)entry.StopMethod ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@CreatedAt", entry.CreatedAt);
         cmd.Parameters.AddWithValue("@UpdatedAt", entry.UpdatedAt);
     }
