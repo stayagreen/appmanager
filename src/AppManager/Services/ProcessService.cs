@@ -9,21 +9,50 @@ namespace AppManager.Services;
 public class ProcessService
 {
     private readonly Dictionary<int, Process> _runningProcesses = new();
+    private readonly PortChecker _portChecker;
+
+    public ProcessService(PortChecker portChecker)
+    {
+        _portChecker = portChecker;
+    }
 
     public bool IsProgramRunning(ProgramEntry entry)
     {
         if (_runningProcesses.TryGetValue(entry.Id, out var proc))
         {
             try { return !proc.HasExited; }
-            catch { return false; }
+            catch { }
         }
+
+        return IsListeningOnPorts(entry);
+    }
+
+    private bool IsListeningOnPorts(ProgramEntry entry)
+    {
+        if (entry.ApiPort.HasValue && _portChecker.IsPortOccupied(entry.ApiPort.Value))
+            return true;
+        if (entry.WebPort.HasValue && _portChecker.IsPortOccupied(entry.WebPort.Value))
+            return true;
+        if (entry.WsPort.HasValue && _portChecker.IsPortOccupied(entry.WsPort.Value))
+            return true;
         return false;
+    }
+
+    public bool IsManagedByUs(ProgramEntry entry)
+    {
+        return _runningProcesses.ContainsKey(entry.Id);
     }
 
     public void Start(ProgramEntry entry)
     {
         if (!File.Exists(entry.StartBat))
             throw new FileNotFoundException($"Start bat not found: {entry.StartBat}");
+
+        if (IsListeningOnPorts(entry))
+        {
+            entry.LogOutput = "[程序已在运行中（端口被占用）]\r\n";
+            return;
+        }
 
         var (command, workDir) = ParseBatFile(entry.StartBat);
         if (string.IsNullOrWhiteSpace(command))
@@ -114,7 +143,14 @@ public class ProcessService
 
     public void RefreshStatus(ProgramEntry entry)
     {
-        entry.Status = IsProgramRunning(entry) ? "Running" : "Stopped";
+        var running = IsProgramRunning(entry);
+        entry.Status = running ? "Running" : "Stopped";
+
+        if (running && !_runningProcesses.ContainsKey(entry.Id))
+        {
+            if (string.IsNullOrWhiteSpace(entry.LogOutput))
+                entry.LogOutput = "[程序在外部启动，无法捕获日志]\r\n";
+        }
     }
 
     private static (string? command, string? workDir) ParseBatFile(string batPath)
@@ -129,31 +165,20 @@ public class ProcessService
             {
                 var trimmed = line.Trim();
 
-                // Extract cd /d path
                 var cdMatch = Regex.Match(trimmed, @"^cd\s+/d\s+""?(.+?)""?\s*$", RegexOptions.IgnoreCase);
                 if (cdMatch.Success)
                 {
                     var cdPath = cdMatch.Groups[1].Value.Trim();
-                    // Handle batch variables like %~dp0, %CD%
-                    if (cdPath.Contains("%"))
-                    {
-                        workDir = batDir;
-                    }
-                    else
-                    {
-                        workDir = cdPath;
-                    }
+                    workDir = cdPath.Contains("%") ? batDir : cdPath;
                     continue;
                 }
 
-                // Extract start "{title}" ... cmd /c "{command}"
                 var startMatch = Regex.Match(trimmed, @"^start\s+""[^""]*""\s+(?:/[a-z]+\s+)*cmd\s+/c\s+""(.+)""\s*$", RegexOptions.IgnoreCase);
                 if (startMatch.Success)
                 {
                     return (startMatch.Groups[1].Value, workDir ?? batDir);
                 }
 
-                // start "title" ... cmd /c command (no quotes around command)
                 var startMatch2 = Regex.Match(trimmed, @"^start\s+""[^""]*""\s+(?:/[a-z]+\s+)*cmd\s+/c\s+(.+)$", RegexOptions.IgnoreCase);
                 if (startMatch2.Success)
                 {
@@ -162,7 +187,6 @@ public class ProcessService
                 }
             }
 
-            // Fallback: look for last non-@echo, non-cd, non-pause, non-timeout line
             for (int i = lines.Length - 1; i >= 0; i--)
             {
                 var line = lines[i].Trim();

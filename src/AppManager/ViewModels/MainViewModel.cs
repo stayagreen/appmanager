@@ -31,8 +31,8 @@ public partial class MainViewModel : ObservableObject
     public MainViewModel()
     {
         _db = new DatabaseService();
-        _process = new ProcessService();
         _portChecker = new PortChecker();
+        _process = new ProcessService(_portChecker);
         _scanner = new ScannerService();
 
         _statusTimer = new DispatcherTimer
