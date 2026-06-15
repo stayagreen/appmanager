@@ -200,8 +200,8 @@ public partial class MainViewModel : ObservableObject
                 t.Tick += (s, args) =>
                 {
                     t.Stop();
-                    // Only detect if ports are not yet assigned
-                    if (!entry.ApiPort.HasValue || !entry.WebPort.HasValue || !entry.WsPort.HasValue)
+                    // Only detect if ports are not yet assigned (0 counts as unset)
+                    if ((entry.ApiPort ?? 0) <= 0 || (entry.WebPort ?? 0) <= 0 || (entry.WsPort ?? 0) <= 0)
                     {
                         _process.DetectPortsAfterStart(entry);
                         _db.Update(entry);
