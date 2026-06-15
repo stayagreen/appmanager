@@ -200,32 +200,20 @@ public class ProcessService
             proc?.WaitForExit(10000);
         }
 
-        // Handle AI-detected stop method
+        // AI stop method
         if (!string.IsNullOrWhiteSpace(entry.StopMethod))
         {
             if (entry.StopMethod.StartsWith("port-"))
-            {
-                var port = entry.StopMethod.Substring(5);
-                KillByPort(port);
-            }
+                KillByPort(entry.StopMethod[5..]);
             else if (entry.StopMethod.StartsWith("taskkill-"))
-            {
-                var procName = entry.StopMethod.Substring(9);
-                KillByProcessName(procName);
-            }
-            else
-            {
-                // Use as direct kill command
-                var psi = new ProcessStartInfo
-                {
-                    FileName = "cmd.exe",
-                    Arguments = $"/c {entry.StopMethod}",
-                    CreateNoWindow = true,
-                    UseShellExecute = false
-                };
-                using var proc = Process.Start(psi);
-                proc?.WaitForExit(10000);
-            }
+                KillByProcessName(entry.StopMethod[9..]);
+        }
+
+        // Fallback: kill by port if program is running externally
+        if (!_runningProcesses.ContainsKey(entry.Id) && IsListeningOnPorts(entry))
+        {
+            if (entry.ApiPort > 0) KillByPort(entry.ApiPort.Value.ToString());
+            if (entry.WebPort > 0) KillByPort(entry.WebPort.Value.ToString());
         }
 
         KillProcessTree(entry);
