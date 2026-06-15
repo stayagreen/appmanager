@@ -162,7 +162,7 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void StartProgram(ProgramEntry? entry)
+    private async Task StartProgram(ProgramEntry? entry)
     {
         if (entry == null || string.IsNullOrWhiteSpace(entry.StartBat)) return;
 
@@ -182,12 +182,12 @@ public partial class MainViewModel : ObservableObject
                 return;
         }
 
+        IsBusy = true;
+        BusyText = $"正在启动 {entry.Name}...";
         try
         {
             entry.LogOutput = "";
-            IsBusy = true;
-            BusyText = $"正在启动 {entry.Name}...";
-            _process.Start(entry);
+            await Task.Run(() => _process.Start(entry));
             entry.Status = "Running";
             _db.Update(entry);
             IsBusy = false;
@@ -212,63 +212,64 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
+            IsBusy = false;
             System.Windows.MessageBox.Show($"启动失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
     [RelayCommand]
-    private void StopProgram(ProgramEntry? entry)
+    private async Task StopProgram(ProgramEntry? entry)
     {
         if (entry == null) return;
+        IsBusy = true;
+        BusyText = $"正在停止 {entry.Name}...";
         try
         {
-            IsBusy = true;
-            BusyText = $"正在停止 {entry.Name}...";
-            _process.Stop(entry);
+            await Task.Run(() => _process.Stop(entry));
             entry.Status = "Stopped";
             _db.UpdateStatus(entry.Id, "Stopped");
-            IsBusy = false;
         }
         catch (Exception ex)
         {
             System.Windows.MessageBox.Show($"停止失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+        IsBusy = false;
     }
 
     [RelayCommand]
-    private void RestartProgram(ProgramEntry? entry)
+    private async Task RestartProgram(ProgramEntry? entry)
     {
         if (entry == null) return;
+        IsBusy = true;
+        BusyText = $"正在重启 {entry.Name}...";
         try
         {
-            IsBusy = true;
-            BusyText = $"正在重启 {entry.Name}...";
-            _process.Restart(entry);
+            await Task.Run(() => _process.Restart(entry));
             entry.Status = "Running";
             _db.UpdateStatus(entry.Id, "Running");
-            IsBusy = false;
         }
         catch (Exception ex)
         {
             System.Windows.MessageBox.Show($"重启失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+        IsBusy = false;
     }
 
     [RelayCommand]
-    private void StartAll()
+    private async Task StartAll()
     {
         foreach (var entry in Programs.Where(p => p.IsStopped))
         {
-            StartProgram(entry);
+            await StartProgram(entry);
         }
     }
 
     [RelayCommand]
-    private void StopAll()
+    private async Task StopAll()
     {
         foreach (var entry in Programs.Where(p => p.IsRunning))
         {
-            StopProgram(entry);
+            await StopProgram(entry);
         }
     }
 
