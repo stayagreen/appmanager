@@ -42,22 +42,8 @@ public class ScannerService
                 var restartBat = Path.Combine(dir, "restart.bat");
                 if (File.Exists(restartBat)) entry.RestartBat = restartBat;
 
-                // Read package.json for name
-                var packageJson = Path.Combine(dir, "package.json");
-                if (File.Exists(packageJson))
-                {
-                    try
-                    {
-                        var json = File.ReadAllText(packageJson);
-                        using var doc = JsonDocument.Parse(json);
-                        if (doc.RootElement.TryGetProperty("name", out var nameProp))
-                            entry.Name = nameProp.GetString() ?? Path.GetFileName(dir);
-                    }
-                    catch { }
-                }
-
-                if (string.IsNullOrWhiteSpace(entry.Name))
-                    entry.Name = Path.GetFileName(dir);
+                // Use folder name as default project name
+                entry.Name = Path.GetFileName(dir);
 
             var (command, stopMethod) = ("", "");
 
