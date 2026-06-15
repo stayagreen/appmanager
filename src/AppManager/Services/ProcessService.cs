@@ -81,6 +81,11 @@ public class ProcessService
         var proc = new Process { StartInfo = psi, EnableRaisingEvents = true };
 
         var sb = new StringBuilder();
+        sb.AppendLine($"[工作目录] {workDir}");
+        sb.AppendLine($"[执行命令] {command}");
+        sb.AppendLine("");
+        entry.LogOutput = sb.ToString();
+
         proc.OutputDataReceived += (s, e) =>
         {
             if (e.Data != null)
@@ -100,6 +105,8 @@ public class ProcessService
 
         proc.Exited += (s, e) =>
         {
+            sb.AppendLine($"[进程已退出，退出码: {proc.ExitCode}]");
+            entry.LogOutput = sb.ToString();
             _runningProcesses.Remove(entry.Id);
             try { proc.Dispose(); } catch { }
         };
