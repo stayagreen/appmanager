@@ -61,6 +61,9 @@ public class ProcessService
         if (string.IsNullOrWhiteSpace(workDir))
             workDir = entry.Directory;
 
+        // Snapshot ports before starting
+        var beforePorts = _portChecker.GetActivePorts();
+
         var psi = new ProcessStartInfo
         {
             FileName = "cmd.exe",
@@ -105,6 +108,60 @@ public class ProcessService
         proc.BeginErrorReadLine();
 
         _runningProcesses[entry.Id] = proc;
+
+        // Wait for server to start, then detect ports
+        Thread.Sleep(3000);
+        DetectPorts(entry, beforePorts);
+    }
+
+    private void DetectPorts(ProgramEntry entry, HashSet<int> beforePorts)
+    {
+        var afterPorts = _portChecker.GetActivePorts();
+        var newPorts = afterPorts.Except(beforePorts).OrderBy(p => p).ToList();
+
+        if (newPorts.Count == 0) return;
+
+        if (newPorts.Count == 1)
+        {
+            entry.ApiPort = newPorts[0];
+            entry.WebPort = newPorts[0];
+        }
+        else if (newPorts.Count == 2)
+        {
+            entry.ApiPort = newPorts[0];
+            entry.WebPort = newPorts[1];
+        }
+        else
+        {
+            // 3+ ports: find WS port (significantly larger outlier)
+            int? wsCandidate = null;
+            for (int i = newPorts.Count - 1; i >= 0; i--)
+            {
+                if (i == 0 || newPorts[i] - newPorts[i - 1] > 1000)
+                {
+                    wsCandidate = newPorts[i];
+                    newPorts.RemoveAt(i);
+                    break;
+                }
+            }
+            if (wsCandidate.HasValue)
+                entry.WsPort = wsCandidate.Value;
+
+            if (newPorts.Count >= 2)
+            {
+                entry.ApiPort = newPorts[0];
+                entry.WebPort = newPorts[1];
+            }
+            else if (newPorts.Count == 1)
+            {
+                entry.ApiPort = newPorts[0];
+                entry.WebPort = newPorts[0];
+            }
+        }
+
+        // Auto-generate login URL
+        if (entry.WebPort.HasValue)
+            entry.LoginUrl = $"http://localhost:{entry.WebPort.Value}";
     }
 
     public void Stop(ProgramEntry entry)

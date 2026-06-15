@@ -172,7 +172,7 @@ public partial class MainViewModel : ObservableObject
             entry.LogOutput = "";
             _process.Start(entry);
             entry.Status = "Running";
-            _db.UpdateStatus(entry.Id, "Running");
+            _db.Update(entry);
         }
         catch (Exception ex)
         {

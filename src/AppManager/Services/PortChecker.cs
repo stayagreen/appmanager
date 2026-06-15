@@ -8,6 +8,14 @@ public class PortChecker
 {
     public readonly record struct PortInfo(int Port, bool IsOccupied, string ProcessName, int Pid);
 
+    public HashSet<int> GetActivePorts()
+    {
+        return new HashSet<int>(
+            IPGlobalProperties.GetIPGlobalProperties()
+                .GetActiveTcpListeners()
+                .Select(l => l.Port));
+    }
+
     public bool IsPortOccupied(int port)
     {
         var listeners = IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpListeners();
