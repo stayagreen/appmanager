@@ -29,12 +29,7 @@ public partial class App : System.Windows.Application
 
     private static void SeedConfig()
     {
-        var config = AppManager.Services.AppConfig.Load();
-        if (string.IsNullOrWhiteSpace(config.OpenCodeApiKey))
-        {
-            config.OpenCodeApiKey = "sk-inEoQQxSJfivJEftKNiIqaKK3By7uMHL9yF7qMkpSNve2mpOYgZpClnScS1XCT4b";
-            config.Save();
-        }
+        // API key is configured via Settings dialog, stored in %AppData%\AppManager\config.json
     }
 
     private void CreateTrayIcon()
