@@ -111,6 +111,11 @@ public class ProcessService
         var newPorts = afterPorts.Except(_beforePorts).OrderBy(p => p).ToList();
         _beforePorts = null;
 
+        var beforeSnapshot = _beforePorts;
+        entry.LogOutput += $"\r\n[端口检测] 启动前: {string.Join(",", beforeSnapshot)}\r\n";
+        entry.LogOutput += $"[端口检测] 启动后: {string.Join(",", afterPorts)}\r\n";
+        entry.LogOutput += $"[端口检测] 新增端口: {string.Join(",", newPorts)}\r\n";
+
         if (newPorts.Count == 0) return;
 
         if (newPorts.Count == 1)

@@ -174,15 +174,14 @@ public partial class MainViewModel : ObservableObject
             entry.Status = "Running";
             _db.Update(entry);
 
-            Task.Run(async () =>
+            var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
+            timer.Tick += (s, args) =>
             {
-                await Task.Delay(4000);
-                System.Windows.Application.Current.Dispatcher.Invoke(() =>
-                {
-                    _process.DetectPortsAfterStart(entry);
-                    _db.Update(entry);
-                });
-            });
+                timer.Stop();
+                _process.DetectPortsAfterStart(entry);
+                _db.Update(entry);
+            };
+            timer.Start();
         }
         catch (Exception ex)
         {
