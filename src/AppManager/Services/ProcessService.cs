@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.IO;
 using System.Text;
-using System.Text.RegularExpressions;
 using AppManager.Models;
 
 namespace AppManager.Services;
@@ -10,6 +9,7 @@ public class ProcessService
 {
     private readonly Dictionary<int, Process> _runningProcesses = new();
     private readonly PortChecker _portChecker;
+    private HashSet<int>? _beforePorts;
 
     public ProcessService(PortChecker portChecker)
     {
@@ -23,27 +23,16 @@ public class ProcessService
             try { return !proc.HasExited; }
             catch { }
         }
-
         return IsListeningOnPorts(entry);
     }
 
     private bool IsListeningOnPorts(ProgramEntry entry)
     {
-        if (entry.ApiPort.HasValue && _portChecker.IsPortOccupied(entry.ApiPort.Value))
-            return true;
-        if (entry.WebPort.HasValue && _portChecker.IsPortOccupied(entry.WebPort.Value))
-            return true;
-        if (entry.WsPort.HasValue && _portChecker.IsPortOccupied(entry.WsPort.Value))
-            return true;
+        if (entry.ApiPort.HasValue && _portChecker.IsPortOccupied(entry.ApiPort.Value)) return true;
+        if (entry.WebPort.HasValue && _portChecker.IsPortOccupied(entry.WebPort.Value)) return true;
+        if (entry.WsPort.HasValue && _portChecker.IsPortOccupied(entry.WsPort.Value)) return true;
         return false;
     }
-
-    public bool IsManagedByUs(ProgramEntry entry)
-    {
-        return _runningProcesses.ContainsKey(entry.Id);
-    }
-
-    private HashSet<int>? _beforePorts;
 
     public void Start(ProgramEntry entry)
     {
@@ -56,33 +45,13 @@ public class ProcessService
             return;
         }
 
-        var (command, workDir) = ParseBatFile(entry.StartBat);
-        if (string.IsNullOrWhiteSpace(command))
-            throw new InvalidOperationException("无法从 bat 文件中提取启动命令");
-
-        if (string.IsNullOrWhiteSpace(workDir))
-            workDir = entry.Directory;
-
+        var workDir = Path.GetDirectoryName(entry.StartBat) ?? entry.Directory;
         _beforePorts = _portChecker.GetActivePorts();
-
-        // If parsed command looks like a short setup line, run the entire bat instead
-        string executableCmd;
-        if (command.Length < 15 ||
-            command.StartsWith("set ", StringComparison.OrdinalIgnoreCase) ||
-            command.StartsWith("if ", StringComparison.OrdinalIgnoreCase) ||
-            command.StartsWith("call ", StringComparison.OrdinalIgnoreCase))
-        {
-            executableCmd = $"\"{entry.StartBat}\"";
-        }
-        else
-        {
-            executableCmd = command;
-        }
 
         var psi = new ProcessStartInfo
         {
             FileName = "cmd.exe",
-            Arguments = $"/c {executableCmd}",
+            Arguments = $"/c \"{entry.StartBat}\"",
             WorkingDirectory = workDir,
             CreateNoWindow = true,
             UseShellExecute = false,
@@ -97,10 +66,7 @@ public class ProcessService
 
         var sb = new StringBuilder();
         sb.AppendLine($"[工作目录] {workDir}");
-        if (executableCmd == command)
-            sb.AppendLine($"[执行命令] {command}");
-        else
-            sb.AppendLine($"[执行] 直接运行 bat: {entry.StartBat}");
+        sb.AppendLine($"[执行] {entry.StartBat}");
         sb.AppendLine("");
         entry.LogOutput = sb.ToString();
 
@@ -159,7 +125,6 @@ public class ProcessService
         }
         else
         {
-            // 3+ ports: find WS port (significantly larger outlier)
             int? wsCandidate = null;
             for (int i = newPorts.Count - 1; i >= 0; i--)
             {
@@ -185,7 +150,6 @@ public class ProcessService
             }
         }
 
-        // Auto-generate login URL
         if (entry.WebPort.HasValue)
             entry.LoginUrl = $"http://localhost:{entry.WebPort.Value}";
     }
@@ -234,66 +198,6 @@ public class ProcessService
             if (string.IsNullOrWhiteSpace(entry.LogOutput))
                 entry.LogOutput = "[程序在外部启动，无法捕获日志]\r\n";
         }
-    }
-
-    private static (string? command, string? workDir) ParseBatFile(string batPath)
-    {
-        try
-        {
-            var lines = File.ReadAllLines(batPath);
-            string? workDir = null;
-            var batDir = Path.GetDirectoryName(batPath) ?? "";
-
-            foreach (var line in lines)
-            {
-                var trimmed = line.Trim();
-
-                var cdMatch = Regex.Match(trimmed, @"^cd\s+/d\s+""?(.+?)""?\s*$", RegexOptions.IgnoreCase);
-                if (cdMatch.Success)
-                {
-                    var cdPath = cdMatch.Groups[1].Value.Trim();
-                    workDir = cdPath.Contains("%") ? batDir : cdPath;
-                    continue;
-                }
-
-                var startMatch = Regex.Match(trimmed, @"^start\s+""[^""]*""\s+(?:/[a-z]+\s+)*cmd\s+/c\s+""(.+)""\s*$", RegexOptions.IgnoreCase);
-                if (startMatch.Success)
-                {
-                    return (startMatch.Groups[1].Value, workDir ?? batDir);
-                }
-
-                var startMatch2 = Regex.Match(trimmed, @"^start\s+""[^""]*""\s+(?:/[a-z]+\s+)*cmd\s+/c\s+(.+)$", RegexOptions.IgnoreCase);
-                if (startMatch2.Success)
-                {
-                    var cmd = startMatch2.Groups[1].Value.Trim('"');
-                    return (cmd, workDir ?? batDir);
-                }
-            }
-
-            for (int i = lines.Length - 1; i >= 0; i--)
-            {
-                var line = lines[i].Trim();
-                if (string.IsNullOrWhiteSpace(line)) continue;
-                if (line.StartsWith("@")) continue;
-                if (line.StartsWith("::")) continue;
-                if (line.StartsWith("rem ", StringComparison.OrdinalIgnoreCase)) continue;
-                if (line.StartsWith("echo", StringComparison.OrdinalIgnoreCase)) continue;
-                if (line.StartsWith("cd", StringComparison.OrdinalIgnoreCase)) continue;
-                if (line.StartsWith("pause", StringComparison.OrdinalIgnoreCase)) continue;
-                if (line.StartsWith("timeout", StringComparison.OrdinalIgnoreCase)) continue;
-                if (line.StartsWith("start", StringComparison.OrdinalIgnoreCase)) continue;
-                if (line.StartsWith("set ", StringComparison.OrdinalIgnoreCase)) continue;
-                if (line.StartsWith("if ", StringComparison.OrdinalIgnoreCase)) continue;
-                if (line.StartsWith("goto ", StringComparison.OrdinalIgnoreCase)) continue;
-                if (line.StartsWith("call ", StringComparison.OrdinalIgnoreCase)) continue;
-                if (line.StartsWith("title ", StringComparison.OrdinalIgnoreCase)) continue;
-                if (line.StartsWith("exit", StringComparison.OrdinalIgnoreCase)) continue;
-                return (line, workDir ?? batDir);
-            }
-        }
-        catch { }
-
-        return (null, null);
     }
 
     private void KillProcessTree(ProgramEntry entry)
