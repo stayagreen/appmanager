@@ -173,6 +173,16 @@ public partial class MainViewModel : ObservableObject
             _process.Start(entry);
             entry.Status = "Running";
             _db.Update(entry);
+
+            Task.Run(async () =>
+            {
+                await Task.Delay(4000);
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                {
+                    _process.DetectPortsAfterStart(entry);
+                    _db.Update(entry);
+                });
+            });
         }
         catch (Exception ex)
         {

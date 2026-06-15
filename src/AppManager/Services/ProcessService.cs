@@ -43,6 +43,8 @@ public class ProcessService
         return _runningProcesses.ContainsKey(entry.Id);
     }
 
+    private HashSet<int>? _beforePorts;
+
     public void Start(ProgramEntry entry)
     {
         if (!File.Exists(entry.StartBat))
@@ -61,8 +63,7 @@ public class ProcessService
         if (string.IsNullOrWhiteSpace(workDir))
             workDir = entry.Directory;
 
-        // Snapshot ports before starting
-        var beforePorts = _portChecker.GetActivePorts();
+        _beforePorts = _portChecker.GetActivePorts();
 
         var psi = new ProcessStartInfo
         {
@@ -108,16 +109,15 @@ public class ProcessService
         proc.BeginErrorReadLine();
 
         _runningProcesses[entry.Id] = proc;
-
-        // Wait for server to start, then detect ports
-        Thread.Sleep(3000);
-        DetectPorts(entry, beforePorts);
     }
 
-    private void DetectPorts(ProgramEntry entry, HashSet<int> beforePorts)
+    public void DetectPortsAfterStart(ProgramEntry entry)
     {
+        if (_beforePorts == null) return;
+
         var afterPorts = _portChecker.GetActivePorts();
-        var newPorts = afterPorts.Except(beforePorts).OrderBy(p => p).ToList();
+        var newPorts = afterPorts.Except(_beforePorts).OrderBy(p => p).ToList();
+        _beforePorts = null;
 
         if (newPorts.Count == 0) return;
 
