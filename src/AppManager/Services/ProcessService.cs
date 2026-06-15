@@ -292,6 +292,24 @@ public class ProcessService
         }
     }
 
+    public void KillAll()
+    {
+        foreach (var kv in _runningProcesses.ToList())
+        {
+            try
+            {
+                if (!kv.Value.HasExited)
+                {
+                    kv.Value.Kill(entireProcessTree: true);
+                    kv.Value.WaitForExit(3000);
+                }
+            }
+            catch { }
+            try { kv.Value.Dispose(); } catch { }
+        }
+        _runningProcesses.Clear();
+    }
+
     private void KillProcessTree(ProgramEntry entry)
     {
         if (_runningProcesses.TryGetValue(entry.Id, out var proc))

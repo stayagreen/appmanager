@@ -67,8 +67,15 @@ public partial class App : System.Windows.Application
 
     private void ExitApplication()
     {
-        _trayIcon?.Dispose();
-        Current.Shutdown();
+        if (MainWindow != null)
+        {
+            MainWindow.Close();
+        }
+        else
+        {
+            _trayIcon?.Dispose();
+            Current.Shutdown();
+        }
     }
 
     protected override void OnExit(ExitEventArgs e)

@@ -404,6 +404,11 @@ public partial class MainViewModel : ObservableObject
 
     public int RunningCount => Programs.Count(p => p.IsRunning);
 
+    public void KillAllProcesses()
+    {
+        _process.KillAll();
+    }
+
     [RelayCommand]
     private void OpenSettings()
     {
