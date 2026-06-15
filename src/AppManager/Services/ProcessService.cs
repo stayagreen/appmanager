@@ -42,6 +42,14 @@ public class ProcessService
         if (IsListeningOnPorts(entry))
         {
             entry.LogOutput = "[程序已在运行中（端口被占用）]\r\n";
+            // Try to detect which ports are actually in use
+            var activePorts = _portChecker.GetActivePorts();
+            if (activePorts.Count > 0 && _beforePorts != null)
+            {
+                var newPorts = activePorts.Except(_beforePorts).ToList();
+                if (newPorts.Count > 0)
+                    entry.LogOutput += $"[检测到端口] {string.Join(", ", newPorts.OrderBy(p => p))}\r\n";
+            }
             return;
         }
 

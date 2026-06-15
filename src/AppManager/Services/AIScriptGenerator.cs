@@ -54,7 +54,35 @@ public class AIScriptGenerator
             if (File.Exists(stopBat))
                 sb.AppendLine($"stop.bat:\n{File.ReadAllText(stopBat)}");
 
-            // Also check common config files
+            // Read server source files for port detection
+            foreach (var pattern in new[] { "server.*", "index.*", "app.*", "main.*" })
+            {
+                foreach (var f in Directory.GetFiles(projectDir, pattern, SearchOption.TopDirectoryOnly))
+                {
+                    if (f.EndsWith(".ts") || f.EndsWith(".js") || f.EndsWith(".py") || f.EndsWith(".go"))
+                    {
+                        var content = File.ReadAllText(f);
+                        if (content.Length < 5000)
+                            sb.AppendLine($"{Path.GetFileName(f)}:\n{content}");
+                    }
+                }
+            }
+
+            // Also check subdirectories for server files
+            foreach (var sub in new[] { "server", "src", "app" })
+            {
+                var subDir = Path.Combine(projectDir, sub);
+                if (!Directory.Exists(subDir)) continue;
+                foreach (var f in Directory.GetFiles(subDir, "*", SearchOption.AllDirectories))
+                {
+                    if ((f.EndsWith(".ts") || f.EndsWith(".js")) && !f.Contains("node_modules"))
+                    {
+                        var content = File.ReadAllText(f);
+                        if (content.Length < 5000)
+                            sb.AppendLine($"{Path.GetFileName(sub)}/{Path.GetFileName(f)}:\n{content}");
+                    }
+                }
+            }
             foreach (var cfg in new[] { ".env", ".env.example", "vite.config.ts", "vite.config.js" })
             {
                 var p = Path.Combine(projectDir, cfg);
@@ -75,7 +103,7 @@ public class AIScriptGenerator
                 {
                     new {
                         role = "system",
-                        content = """分析项目，返回严格JSON（不要markdown）：{"command":"启动命令","stopMethod":"停止方法","apiPort":端口号,"webPort":端口号,"wsPort":端口号,"loginUrl":"登录地址"}。command是完整启动命令。stopMethod只能是: port-端口号 或 taskkill-进程名。端口号从项目文件中分析（package.json脚本、server.js/ts、vite.config、.env等）。loginUrl用webPort或apiPort生成http://localhost:端口。如果某个端口不存在则填0。"""
+                        content = """分析项目，返回严格JSON：{"command":"启动命令","stopMethod":"停止方法","apiPort":端口,"webPort":端口,"wsPort":端口,"loginUrl":"地址"}。command必须从start.bat和package.json中提取真实命令（如npm run dev、node server.js、python app.py），不要用start.bat本身。stopMethod: port-端口号 或 taskkill-进程名。端口从源码中查找listen/port定义。loginUrl用webPort或apiPort拼。端口不存在填0。"""
                     },
                     new { role = "user", content = sb.ToString() }
                 },
