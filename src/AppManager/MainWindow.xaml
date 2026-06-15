@@ -60,10 +60,23 @@
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                     <ListBox.ItemTemplate>
                         <DataTemplate DataType="{x:Type models:ProgramEntry}">
-                            <Border Padding="8,6" CornerRadius="4" Margin="0,0,0,2">
+                             <Border Padding="8,6" CornerRadius="4" Margin="0,0,0,2">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{Binding StatusIcon}" FontSize="12"
-                                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Ellipse Width="10" Height="10" VerticalAlignment="Center" Margin="0,0,8,0">
+                                        <Ellipse.Style>
+                                            <Style TargetType="Ellipse">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Status}" Value="Running">
+                                                        <Setter Property="Fill" Value="#22BB33"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Status}" Value="Stopped">
+                                                        <Setter Property="Fill" Value="#DD3333"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                                <Setter Property="Fill" Value="#AAAAAA"/>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
                                     <StackPanel>
                                         <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
                                                    FontSize="13"/>
@@ -99,8 +112,21 @@
 
                 <!-- Header with status -->
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                    <TextBlock Text="{Binding SelectedProgram.StatusIcon}" FontSize="20"
-                               VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <Ellipse Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,10,0">
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SelectedProgram.Status}" Value="Running">
+                                        <Setter Property="Fill" Value="#22BB33"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding SelectedProgram.Status}" Value="Stopped">
+                                        <Setter Property="Fill" Value="#DD3333"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                                <Setter Property="Fill" Value="#AAAAAA"/>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
                     <TextBlock Text="{Binding SelectedProgram.Name}" FontSize="22"
                                FontWeight="Bold" VerticalAlignment="Center"/>
                     <TextBlock FontSize="14" Foreground="#888" VerticalAlignment="Center"
