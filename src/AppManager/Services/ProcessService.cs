@@ -127,12 +127,25 @@ public class ProcessService
     {
         if (_beforePorts == null) return;
 
+        // First try: parse port from log output (e.g. "http://localhost:7000")
+        var logText = entry.LogOutput ?? "";
+        var urlMatch = System.Text.RegularExpressions.Regex.Match(logText, @"https?://[^\s:]+:(\d+)");
+        if (urlMatch.Success && int.TryParse(urlMatch.Groups[1].Value, out var parsedPort))
+        {
+            entry.ApiPort = parsedPort;
+            entry.WebPort = parsedPort;
+            entry.LoginUrl = urlMatch.Value.Trim();
+            entry.LogOutput += $"\r\n[端口检测] 从输出提取: {parsedPort}\r\n";
+            _beforePorts = null;
+            return;
+        }
+
         var afterPorts = _portChecker.GetActivePorts();
         var newPorts = afterPorts.Except(_beforePorts).OrderBy(p => p).ToList();
 
         entry.LogOutput += $"\r\n[端口检测] 新增端口: {string.Join(",", newPorts)}\r\n";
 
-        if (newPorts.Count == 0) return;
+        if (newPorts.Count == 0) { _beforePorts = null; return; }
 
         // Assign ports: lower = API, higher = Web, remote outlier = WS
         if (newPorts.Count >= 3)
