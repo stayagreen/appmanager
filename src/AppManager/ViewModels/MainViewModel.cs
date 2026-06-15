@@ -277,6 +277,24 @@ public partial class MainViewModel : ObservableObject
     {
         if (entry == null || string.IsNullOrWhiteSpace(entry.LoginUrl)) return;
         System.Windows.Clipboard.SetText(entry.LoginUrl);
+        BusyText = "已复制";
+        IsBusy = true;
+        Task.Run(async () => { await Task.Delay(1500); IsBusy = false; });
+    }
+
+    [RelayCommand]
+    private void OpenUrl(ProgramEntry? entry)
+    {
+        if (entry == null || string.IsNullOrWhiteSpace(entry.LoginUrl)) return;
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = entry.LoginUrl,
+                UseShellExecute = true
+            });
+        }
+        catch { }
     }
 
     [RelayCommand]

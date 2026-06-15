@@ -196,6 +196,17 @@
                                     Cursor="Hand"
                                     Command="{Binding CopyUrlCommand}"
                                     CommandParameter="{Binding SelectedProgram}"/>
+                            <Button Content="打开" FontSize="11"
+                                    Height="22" MinWidth="44"
+                                    Margin="6,0,0,0"
+                                    Background="#0078D4" BorderThickness="0"
+                                    Foreground="White"
+                                    Cursor="Hand"
+                                    Command="{Binding OpenUrlCommand}"
+                                    CommandParameter="{Binding SelectedProgram}"/>
+                            <TextBlock x:Name="CopyFeedback" Text="已复制" FontSize="11"
+                                       Foreground="#22BB33" VerticalAlignment="Center" Margin="8,0,0,0"
+                                       Visibility="Collapsed"/>
                         </StackPanel>
                     </Grid>
                 </Border>
