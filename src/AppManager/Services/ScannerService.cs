@@ -13,19 +13,23 @@ public class ScannerService
         bool AlreadyExists
     );
 
-    public async Task<List<ScanResult>> ScanDirectoryAsync(string rootPath)
+    public async Task<List<ScanResult>> ScanDirectoryAsync(string rootPath, Action<int, int, string>? onProgress = null)
     {
         var results = new List<ScanResult>();
         if (!Directory.Exists(rootPath)) return results;
 
         var ai = new AIScriptGenerator();
         var startBatFiles = Directory.GetFiles(rootPath, "start.bat", SearchOption.AllDirectories);
+        var total = startBatFiles.Length;
+        var current = 0;
 
         foreach (var startBat in startBatFiles)
         {
+            current++;
             try
             {
                 var dir = Path.GetDirectoryName(startBat)!;
+                onProgress?.Invoke(current, total, Path.GetFileName(dir));
                 var entry = new ProgramEntry
                 {
                     Directory = dir,

@@ -6,5 +6,6 @@
     <Application.Resources>
         <converters:NullToCollapsedConverter x:Key="NullToCollapsed"/>
         <converters:NullToVisibleConverter x:Key="NullToVisible"/>
+        <converters:BoolToVisibleConverter x:Key="BoolToVisible"/>
     </Application.Resources>
 </Application>

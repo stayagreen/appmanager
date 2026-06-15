@@ -9,7 +9,12 @@ public class AIScriptGenerator
 {
     private readonly HttpClient _http = new();
     private const string ApiUrl = "https://opencode.ai/zen/go/v1/chat/completions";
-    private const string ApiKey = "sk-inEoQQxSJfivJEftKNiIqaKK3By7uMHL9yF7qMkpSNve2mpOYgZpClnScS1XCT4b";
+    private readonly string _apiKey;
+
+    public AIScriptGenerator()
+    {
+        _apiKey = AppConfig.Load().OpenCodeApiKey;
+    }
 
     public readonly record struct AIScanResult(
         string Command,
@@ -19,6 +24,9 @@ public class AIScriptGenerator
 
     public async Task<AIScanResult?> AnalyzeProject(string projectDir, string existingStartBat)
     {
+        if (string.IsNullOrWhiteSpace(_apiKey))
+            return null;
+
         try
         {
             var sb = new StringBuilder();
@@ -67,7 +75,7 @@ public class AIScriptGenerator
             var json = JsonSerializer.Serialize(request);
             var httpContent = new StringContent(json, Encoding.UTF8, "application/json");
             _http.DefaultRequestHeaders.Clear();
-            _http.DefaultRequestHeaders.Add("Authorization", $"Bearer {ApiKey}");
+            _http.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
 
             var response = await _http.PostAsync(ApiUrl, httpContent);
             var responseBody = await response.Content.ReadAsStringAsync();

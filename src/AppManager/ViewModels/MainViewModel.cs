@@ -28,6 +28,15 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool _hasPortConflicts;
 
+    [ObservableProperty]
+    private bool _isScanning;
+
+    [ObservableProperty]
+    private string _scanProgressText = "";
+
+    [ObservableProperty]
+    private double _scanProgressValue;
+
     public MainViewModel()
     {
         _db = new DatabaseService();
@@ -256,10 +265,19 @@ public partial class MainViewModel : ObservableObject
 
         if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
         {
-            var results = await _scanner.ScanDirectoryAsync(dialog.SelectedPath);
+            IsScanning = true;
+            ScanProgressValue = 0;
+
+            var results = await _scanner.ScanDirectoryAsync(dialog.SelectedPath, (current, total, name) =>
+            {
+                ScanProgressText = $"正在扫描: {name} ({current}/{total})";
+                ScanProgressValue = (double)current / total * 100;
+            });
             if (results.Count == 0)
             {
-                System.Windows.MessageBox.Show("未发现任何项目（未找到 start.bat 或 app.json）。", "扫描结果", MessageBoxButton.OK, MessageBoxImage.Information);
+                IsScanning = false;
+                ScanProgressText = "";
+                System.Windows.MessageBox.Show("未发现任何项目（未找到 start.bat）。", "扫描结果", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -278,6 +296,9 @@ public partial class MainViewModel : ObservableObject
             System.Windows.MessageBox.Show($"从 {results.Count} 个项目中导入了 {imported} 个新程序。\n" +
                 $"跳过 {results.Count - imported} 个已存在的程序。", "扫描完成",
                 MessageBoxButton.OK, MessageBoxImage.Information);
+
+            IsScanning = false;
+            ScanProgressText = "";
         }
     }
 
@@ -339,4 +360,17 @@ public partial class MainViewModel : ObservableObject
     }
 
     public int RunningCount => Programs.Count(p => p.IsRunning);
+
+    [RelayCommand]
+    private void OpenSettings()
+    {
+        var config = AppConfig.Load();
+        var dialog = new Views.SettingsDialog(config.OpenCodeApiKey);
+        dialog.Owner = System.Windows.Application.Current.MainWindow;
+        if (dialog.ShowDialog() == true)
+        {
+            config.OpenCodeApiKey = dialog.ApiKey;
+            config.Save();
+        }
+    }
 }
