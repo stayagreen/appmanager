@@ -27,7 +27,10 @@ public class AIScriptGenerator
     public readonly record struct AIScanResult(
         string Command,
         string StopMethod,
-        string? WorkingDir
+        int? ApiPort,
+        int? WebPort,
+        int? WsPort,
+        string LoginUrl
     );
 
     public async Task<AIScanResult?> AnalyzeProject(string projectDir, string existingStartBat)
@@ -72,7 +75,7 @@ public class AIScriptGenerator
                 {
                     new {
                         role = "system",
-                        content = """你的任务是分析项目并输出JSON。启动命令必须是完整可执行的命令（如 npm run dev, python app.py, node server.js 等）。停止方法只能是: port-端口号（如port-7000）或 taskkill-进程名（如taskkill-node.exe）。输出严格JSON，不要markdown：{"command":"启动命令","stopMethod":"停止方法"}。"""
+                        content = """分析项目，返回严格JSON（不要markdown）：{"command":"启动命令","stopMethod":"停止方法","apiPort":端口号,"webPort":端口号,"wsPort":端口号,"loginUrl":"登录地址"}。command是完整启动命令。stopMethod只能是: port-端口号 或 taskkill-进程名。端口号从项目文件中分析（package.json脚本、server.js/ts、vite.config、.env等）。loginUrl用webPort或apiPort生成http://localhost:端口。如果某个端口不存在则填0。"""
                     },
                     new { role = "user", content = sb.ToString() }
                 },
@@ -108,15 +111,18 @@ public class AIScriptGenerator
             var root = resultDoc.RootElement;
 
             return new AIScanResult(
-                root.GetProperty("command").GetString() ?? "",
+                root.TryGetProperty("command", out var cmd) ? cmd.GetString() ?? "" : "",
                 root.TryGetProperty("stopMethod", out var sm) ? sm.GetString() ?? "" : "",
-                root.TryGetProperty("workingDir", out var wd) ? wd.GetString() : null
+                root.TryGetProperty("apiPort", out var ap) && ap.ValueKind == JsonValueKind.Number ? ap.GetInt32() : null,
+                root.TryGetProperty("webPort", out var wp) && wp.ValueKind == JsonValueKind.Number ? wp.GetInt32() : null,
+                root.TryGetProperty("wsPort", out var wsp) && wsp.ValueKind == JsonValueKind.Number ? wsp.GetInt32() : null,
+                root.TryGetProperty("loginUrl", out var lu) ? lu.GetString() ?? "" : ""
             );
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"AI analysis failed: {ex.Message}");
-            return new AIScanResult("", "", null);
+            return new AIScanResult("", "", null, null, null, "");
         }
     }
 }

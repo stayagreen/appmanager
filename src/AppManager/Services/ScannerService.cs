@@ -58,6 +58,10 @@ public class ScannerService
                     {
                         command = aiResult.Value.Command;
                         stopMethod = aiResult.Value.StopMethod;
+                        if (aiResult.Value.ApiPort > 0) entry.ApiPort = aiResult.Value.ApiPort;
+                        if (aiResult.Value.WebPort > 0) entry.WebPort = aiResult.Value.WebPort;
+                        if (aiResult.Value.WsPort > 0) entry.WsPort = aiResult.Value.WsPort;
+                        if (!string.IsNullOrWhiteSpace(aiResult.Value.LoginUrl)) entry.LoginUrl = aiResult.Value.LoginUrl;
                     }
                 }
                 catch { }
