@@ -69,12 +69,12 @@ public class AIScriptGenerator
                 {
                     new {
                         role = "system",
-                        content = """你是一个项目分析专家。根据提供的项目文件，分析这个项目的启动方式。返回严格的 JSON 格式（不要 markdown）：{"command":"启动命令","stopMethod":"停止方法","workingDir":"工作目录"}。停止方法可以是: port-XXXX (通过端口杀进程), taskkill-XXXX (通过进程名杀进程), 或者具体命令。只返回 JSON。"""
+                        content = """你是一个项目分析专家。根据提供的项目文件，分析这个项目的启动方式。返回严格的 JSON 格式（不要markdown，不要解释）：{"command":"启动命令","stopMethod":"停止方法"}。command是完整的启动命令。stopMethod格式只能是以下之一：port-端口号（如port-7000）表示通过端口杀进程；taskkill-进程名（如taskkill-node.exe）表示通过进程名杀进程。只返回JSON。"""
                     },
                     new { role = "user", content = sb.ToString() }
                 },
-                max_tokens = 500,
-                temperature = 0.1
+                max_tokens = 2000,
+                temperature = 0
             };
 
             var json = JsonSerializer.Serialize(request);
@@ -84,11 +84,16 @@ public class AIScriptGenerator
             var responseBody = await response.Content.ReadAsStringAsync();
 
             using var doc = JsonDocument.Parse(responseBody);
-            var reply = doc.RootElement
-                .GetProperty("choices")[0]
-                .GetProperty("message")
-                .GetProperty("content")
-                .GetString() ?? "";
+            var msg = doc.RootElement.GetProperty("choices")[0].GetProperty("message");
+
+            var reply = "";
+            if (msg.TryGetProperty("content", out var c) && c.ValueKind == JsonValueKind.String)
+                reply = c.GetString() ?? "";
+            if (string.IsNullOrWhiteSpace(reply) &&
+                msg.TryGetProperty("reasoning_content", out var rc) && rc.ValueKind == JsonValueKind.String)
+                reply = rc.GetString() ?? "";
+
+            if (string.IsNullOrWhiteSpace(reply)) return null;
 
             var cleanJson = reply.Trim();
             if (cleanJson.StartsWith("```"))
