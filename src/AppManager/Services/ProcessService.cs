@@ -186,31 +186,16 @@ public class ProcessService
 
     public void Stop(ProgramEntry entry)
     {
-        if (!string.IsNullOrWhiteSpace(entry.StopBat) && File.Exists(entry.StopBat))
-        {
-            var psi = new ProcessStartInfo
-            {
-                FileName = "cmd.exe",
-                Arguments = $"/c \"{entry.StopBat}\"",
-                WorkingDirectory = Path.GetDirectoryName(entry.StopBat) ?? entry.Directory,
-                CreateNoWindow = true,
-                UseShellExecute = false
-            };
-            using var proc = Process.Start(psi);
-            proc?.WaitForExit(10000);
-        }
-
-        // AI stop method (only port-based to avoid killing other projects)
-        if (!string.IsNullOrWhiteSpace(entry.StopMethod))
-        {
-            if (entry.StopMethod.StartsWith("port-"))
-                KillByPort(entry.StopMethod[5..]);
-        }
-
-        // Fallback: kill by port
+        // Kill by configured ports (won't affect other projects)
         if (entry.ApiPort > 0) KillByPort(entry.ApiPort.Value.ToString());
         if (entry.WebPort > 0) KillByPort(entry.WebPort.Value.ToString());
+        if (entry.WsPort > 0) KillByPort(entry.WsPort.Value.ToString());
 
+        // AI stop method (port-based only)
+        if (!string.IsNullOrWhiteSpace(entry.StopMethod) && entry.StopMethod.StartsWith("port-"))
+            KillByPort(entry.StopMethod[5..]);
+
+        // Kill managed process tree
         KillProcessTree(entry);
     }
 
