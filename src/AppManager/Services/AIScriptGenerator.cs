@@ -100,7 +100,7 @@ public class AIScriptGenerator
                 {
                     new {
                         role = "system",
-                        content = """分析项目，返回严格JSON：{"command":"启动命令","stopMethod":"停止方法","apiPort":端口,"webPort":端口,"wsPort":端口,"loginUrl":"地址"}。command必须从start.bat和package.json中提取真实命令（如npm run dev、node server.js、python app.py），不要用start.bat本身。stopMethod: port-端口号 或 taskkill-进程名。端口从源码中查找listen/port定义。loginUrl用webPort或apiPort拼。端口不存在填0。"""
+                        content = """分析项目，返回严格JSON：{"command":"启动命令","stopMethod":"停止方法","apiPort":端口,"webPort":端口,"wsPort":端口,"loginUrl":"地址"}。command必须从start.bat和package.json中提取真实命令。stopMethod只能用 port-端口号 格式（如port-7000），不要用taskkill。端口从源码中查找，端口不存在填0。loginUrl用webPort拼。"""
                     },
                     new { role = "user", content = sb.ToString() }
                 },

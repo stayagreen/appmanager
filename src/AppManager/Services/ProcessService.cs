@@ -200,21 +200,16 @@ public class ProcessService
             proc?.WaitForExit(10000);
         }
 
-        // AI stop method
+        // AI stop method (only port-based to avoid killing other projects)
         if (!string.IsNullOrWhiteSpace(entry.StopMethod))
         {
             if (entry.StopMethod.StartsWith("port-"))
                 KillByPort(entry.StopMethod[5..]);
-            else if (entry.StopMethod.StartsWith("taskkill-"))
-                KillByProcessName(entry.StopMethod[9..]);
         }
 
-        // Fallback: kill by port if program is running externally
-        if (!_runningProcesses.ContainsKey(entry.Id) && IsListeningOnPorts(entry))
-        {
-            if (entry.ApiPort > 0) KillByPort(entry.ApiPort.Value.ToString());
-            if (entry.WebPort > 0) KillByPort(entry.WebPort.Value.ToString());
-        }
+        // Fallback: kill by port
+        if (entry.ApiPort > 0) KillByPort(entry.ApiPort.Value.ToString());
+        if (entry.WebPort > 0) KillByPort(entry.WebPort.Value.ToString());
 
         KillProcessTree(entry);
     }
